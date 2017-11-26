@@ -2,13 +2,14 @@ import numpy as np
 import time
 import csv
 from tqdm import tqdm
+from sklearn.feature_extraction.text import CountVectorizer
 
 class QueryDatabase(object):
     def __init__(self, sample=False):
         self.word2vec =  self.load_vectors(sample)
         self.queries = {}
         self.load_queries(sample)
-        self.querie_sets = self.load_query_sets(sample)
+        self.query_sets = self.load_query_sets(sample)
 
     def add_query(self, id, title, body):
         """
@@ -81,6 +82,7 @@ class QueryDatabase(object):
                     break
         return query_sets
 
+
 class QuerySet(object):
     def __init__(self, id, similar_questions, random_questions):
         # Id of main query
@@ -90,6 +92,7 @@ class QuerySet(object):
         # List of random question ids
         self.random_questions = random_questions
 
+
 class Query(object):
     # Titles with a length greater than 20 get their feature vectors truncated. Those with a smaller size are padded with zeroes
     MAX_TITLE_LENGTH = 20
@@ -98,23 +101,25 @@ class Query(object):
     TOKEN_VECTOR_SIZE = 200
 
     def __init__(self, title, body):
-        self.title_tokens  = title.split()
+        self.title_tokens = title.split()
         self.body_tokens = body.split()
 
     def get_feature_vector(self, word2vec, token_list, max_length):
         feature_vector = []
-        for token in range(min(len(token_list), max_length)):
+        for token_idx in range(min(len(token_list), max_length)):
+            token = token_list[token_idx]
             if token in word2vec:
                 feature_vector.append(word2vec[token])
             else:
                 feature_vector.append(np.zeros(Query.TOKEN_VECTOR_SIZE))
         # Padd the end with zeroes
         if len(token_list) < max_length:
-            for i in range(max_length- len(token_list)):
+            for i in range(len(token_list), max_length):
                 feature_vector.append(np.zeros(Query.TOKEN_VECTOR_SIZE))
-        return np.concatenate(feature_vector)
+        return np.array(feature_vector)
 
     def get_title_feature_vector(self, word2vec):
+        print self.title_tokens
         return self.get_feature_vector(word2vec, self.title_tokens, Query.MAX_TITLE_LENGTH)
 
     def get_body_feature_vector(self, word2vec):
@@ -123,3 +128,4 @@ class Query(object):
 
 if __name__=="__main__":
     query_database = QueryDatabase(sample=True)
+    print query_database.queries[1].get_title_feature_vector(query_database.word2vec)
