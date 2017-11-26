@@ -1,10 +1,13 @@
 import numpy as np
 import time
 import csv
+import torch.utils.data as data
+import torch 
 from tqdm import tqdm
-from sklearn.feature_extraction.text import CountVectorizer
 
-class QueryDatabase(object):
+
+
+class QueryDatabase(data.Dataset):
     def __init__(self, sample=False):
         self.word2vec =  self.load_vectors(sample)
         self.queries = {}
@@ -13,6 +16,18 @@ class QueryDatabase(object):
         self.validation_sets = self.load_testing_sets("data/dev.txt", sample)
         self.testing_sets = self.load_testing_sets("data/test.txt", sample)
 
+    def __len__(self):
+        return len(self.query_sets)
+
+    def __getitem__(self, item):
+        if item > len(self):
+            raise AttributeError("index out of bounds")
+        main_title_vector, main_body_vector = self.query_sets[item].get_query_vector()
+        sim_title_vector, sim_body_vector = self.query_sets[item].get_similar_query_vector()
+        random_title_vectors, random_body_vectors = self.query_sets[item].get_random_query_vectors()
+
+        return {"title_vec": main_title_vector, "body_vec": main_body_vector,  "sim_title_vec": sim_title_vector,\
+        'sim_body_vec':sim_body_vector, "rand_title_vecs": random_title_vectors, "rand_body_vecs": random_body_vectors}
 
     def add_query(self, id, title, body):
         """
@@ -23,7 +38,7 @@ class QueryDatabase(object):
         """
         if id in self.queries:
             raise RuntimeError("Added same query to database")
-        self.queries[id] = Query(title, body)
+        self.queries[id] = Query(title, body, self.word2vec)
 
     def load_vectors(self, sample=False):
         """
@@ -39,7 +54,7 @@ class QueryDatabase(object):
                 parsed_line = line.split()
                 word = parsed_line[0]
                 embeddings = [float(num) for num in parsed_line[1:]]
-                word2vec[word] = np.array(embeddings)
+                word2vec[word] = torch.FloatTensor(embeddings)
                 if (sample and count>10000):
                     break
         return word2vec
@@ -79,7 +94,7 @@ class QueryDatabase(object):
                 id = int(row[0])
                 similar_queries = [int(question_id) for question_id in row[1].split()]
                 random_queries = [int(question_id) for question_id in row[2].split()]
-                query_set = QuerySet(id, similar_queries, random_queries)
+                query_set = QuerySet(id, similar_queries, random_queries, self.queries)
                 query_sets.append(query_set)
                 if (sample and count > 10000):
                     break
@@ -114,13 +129,31 @@ class QueryDatabase(object):
 
 
 class QuerySet(object):
-    def __init__(self, id, similar_queries, random_queries):
+    NUM_RAND_QUESTIONS_THRESHOLD = 20 
+    def __init__(self, id, similar_queries, random_queries, queries):
         # Id of main query
         self.id = id
         # List of similar question ids
         self.similar_queries = similar_queries
         # List of random question ids
         self.random_queries = random_queries
+        self.queries = queries
+
+    def get_query_vector(self):
+        return (self.queries[self.id].get_title_feature_vector(), self.queries[self.id].get_body_feature_vector())
+
+    def get_similar_query_vector(self):
+        rand_id = np.random.choice(self.similar_queries)
+        return (self.queries[rand_id].get_title_feature_vector(), self.queries[rand_id].get_body_feature_vector())
+
+
+    def get_random_query_vectors(self):
+        rand_ids = np.random.choice(self.random_queries, QuerySet.NUM_RAND_QUESTIONS_THRESHOLD)
+        title_vectors = torch.cat([self.queries[rand_id].get_title_feature_vector().unsqueeze(0) for rand_id in rand_ids],0)
+        body_vectors = torch.cat([self.queries[rand_id].get_body_feature_vector().unsqueeze(0) for rand_id in rand_ids], 0)
+        return (title_vectors, body_vectors)
+
+
 
 
 class TestingQuerySet(object):
@@ -136,6 +169,7 @@ class TestingQuerySet(object):
 
 
 
+
 class Query(object):
     # Titles with a length greater than 20 get their feature vectors truncated. Those with a smaller size are padded with zeroes
     MAX_TITLE_LENGTH = 20
@@ -143,32 +177,33 @@ class Query(object):
     MAX_BODY_LENGTH= 100
     TOKEN_VECTOR_SIZE = 200
 
-    def __init__(self, title, body):
+    def __init__(self, title, body, word2vec):
         self.title_tokens = title.split()
         self.body_tokens = body.split()
+        self.word2vec = word2vec
 
-    def get_feature_vector(self, word2vec, token_list, max_length):
+    def get_feature_vector(self, token_list, max_length):
         feature_vector = []
         for token_idx in range(min(len(token_list), max_length)):
             token = token_list[token_idx]
-            if token in word2vec:
-                feature_vector.append(word2vec[token])
+            if token in self.word2vec:
+                feature_vector.append(self.word2vec[token].unsqueeze(0))
             else:
-                feature_vector.append(np.zeros(Query.TOKEN_VECTOR_SIZE))
+                feature_vector.append(torch.zeros(Query.TOKEN_VECTOR_SIZE).unsqueeze(0))
         # Padd the end with zeroes
         if len(token_list) < max_length:
             for i in range(len(token_list), max_length):
-                feature_vector.append(np.zeros(Query.TOKEN_VECTOR_SIZE))
-        return np.array(feature_vector)
+                feature_vector.append(torch.zeros(Query.TOKEN_VECTOR_SIZE).unsqueeze(0))
+        return torch.cat(feature_vector)
 
-    def get_title_feature_vector(self, word2vec):
-        print self.title_tokens
-        return self.get_feature_vector(word2vec, self.title_tokens, Query.MAX_TITLE_LENGTH)
+    def get_title_feature_vector(self):
+        return self.get_feature_vector(self.title_tokens, Query.MAX_TITLE_LENGTH)
 
-    def get_body_feature_vector(self, word2vec):
-        return self.get_feature_vector(word2vec, self.body_tokens, Query.MAX_BODY_LENGTH)
+    def get_body_feature_vector(self):
+        return self.get_feature_vector(self.body_tokens, Query.MAX_BODY_LENGTH)
 
 
 if __name__=="__main__":
-    query_database = QueryDatabase(sample=True)
-    print query_database.queries[1].get_title_feature_vector(query_database.word2vec)
+    query_database = QueryDatabase(sample=False)
+    print query_database[0]
+    #print query_database.queries[1].get_title_feature_vector()
