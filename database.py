@@ -2,32 +2,28 @@ import numpy as np
 import time
 import csv
 import torch.utils.data as data
-import torch 
+import torch
+import datasets
 from tqdm import tqdm
 
 
-
-class QueryDatabase(data.Dataset):
+class QueryDatabase():
     def __init__(self, sample=False):
         self.word2vec =  self.load_vectors(sample)
-        self.queries = {}
-        self.load_queries(sample)
+        self.id_to_query = {}
+        self.load_id_to_query(sample)
         self.query_sets = self.load_query_sets(sample)
         self.validation_sets = self.load_testing_sets("data/dev.txt", sample)
         self.testing_sets = self.load_testing_sets("data/test.txt", sample)
 
-    def __len__(self):
-        return len(self.query_sets)
+    def get_training_dataset(self):
+        return datasets.TrainingDataloader(self.id_to_query, self.query_sets)
 
-    def __getitem__(self, item):
-        if item > len(self):
-            raise AttributeError("index out of bounds")
-        main_title_vector, main_body_vector = self.query_sets[item].get_query_vector()
-        sim_title_vector, sim_body_vector = self.query_sets[item].get_similar_query_vector()
-        random_title_vectors, random_body_vectors = self.query_sets[item].get_random_query_vectors()
+    def get_validation_dataset(self):
+        return datasets.TestingDataset(self.id_to_query, self.validation_sets)
 
-        return {"title_vec": main_title_vector, "body_vec": main_body_vector,  "sim_title_vec": sim_title_vector,\
-        'sim_body_vec':sim_body_vector, "rand_title_vecs": random_title_vectors, "rand_body_vecs": random_body_vectors}
+    def get_testing_dataset(self):
+        return datasets.TestingDataset(self.id_to_query, self.testing_sets)
 
     def add_query(self, id, title, body):
         """
@@ -36,9 +32,9 @@ class QueryDatabase(data.Dataset):
         :param body: list of words of body
         :return: nothing
         """
-        if id in self.queries:
+        if id in self.id_to_query:
             raise RuntimeError("Added same query to database")
-        self.queries[id] = Query(title, body, self.word2vec)
+        self.id_to_query[id] = Query(title, body, self.word2vec)
 
     def load_vectors(self, sample=False):
         """
@@ -59,13 +55,13 @@ class QueryDatabase(data.Dataset):
                     break
         return word2vec
 
-    def load_queries(self, sample):
+    def load_id_to_query(self, sample):
         """
-        Loads the queries into the query dictionary
-        :param sample: boolean true if we want only a sample of 1000 queries
+        Loads the id_to_query into the query dictionary
+        :param sample: boolean true if we want only a sample of 1000 id_to_query
         :return: nothing
         """
-        print("Loading queries...")
+        print("Loading id_to_query...")
         with open("data/texts_raw_fixed.txt") as infile:
             count = 0
             reader = csv.reader(infile, delimiter="\t")
@@ -77,6 +73,7 @@ class QueryDatabase(data.Dataset):
                 self.add_query(id, title,body)
                 if (sample and count > 10000):
                     break
+
 
     def load_query_sets(self, sample):
         """
@@ -92,9 +89,9 @@ class QueryDatabase(data.Dataset):
             for row in tqdm(reader):
                 count += 1
                 id = int(row[0])
-                similar_queries = [int(question_id) for question_id in row[1].split()]
-                random_queries = [int(question_id) for question_id in row[2].split()]
-                query_set = QuerySet(id, similar_queries, random_queries, self.queries)
+                similar_id_to_query = [int(question_id) for question_id in row[1].split()]
+                random_id_to_query = [int(question_id) for question_id in row[2].split()]
+                query_set = QuerySet(id, similar_id_to_query, random_id_to_query, self.id_to_query)
                 query_sets.append(query_set)
                 if (sample and count > 10000):
                     break
@@ -117,10 +114,10 @@ class QueryDatabase(data.Dataset):
             for row in tqdm(reader):
                 count += 1
                 id = int(row[0])
-                similar_queries = [int(question_id) for question_id in row[1].split()]
-                candidate_queries = [int(question_id) for question_id in row[2].split()]
+                similar_id_to_query = [int(question_id) for question_id in row[1].split()]
+                candidate_id_to_query = [int(question_id) for question_id in row[2].split()]
                 bm25_scores = [float(score) for score in row[3].split()]
-                query_set = TestingQuerySet(id, similar_queries, candidate_queries, bm25_scores)
+                query_set = TestingQuerySet(id, similar_id_to_query, candidate_id_to_query, bm25_scores, self.id_to_query)
                 testing_query_sets.append(query_set)
                 if (sample and count > 10000):
                     break
@@ -130,44 +127,56 @@ class QueryDatabase(data.Dataset):
 
 class QuerySet(object):
     NUM_RAND_QUESTIONS_THRESHOLD = 20 
-    def __init__(self, id, similar_queries, random_queries, queries):
+    def __init__(self, id, similar_id_to_query, random_id_to_query, id_to_query):
         # Id of main query
         self.id = id
         # List of similar question ids
-        self.similar_queries = similar_queries
+        self.similar_id_to_query = similar_id_to_query
         # List of random question ids
-        self.random_queries = random_queries
-        self.queries = queries
+        self.random_id_to_query = random_id_to_query
+        self.id_to_query = id_to_query
 
     def get_query_vector(self):
-        return (self.queries[self.id].get_title_feature_vector(), self.queries[self.id].get_body_feature_vector())
+        return (self.id_to_query[self.id].get_title_feature_vector(), self.id_to_query[self.id].get_body_feature_vector())
 
     def get_similar_query_vector(self):
-        rand_id = np.random.choice(self.similar_queries)
-        return (self.queries[rand_id].get_title_feature_vector(), self.queries[rand_id].get_body_feature_vector())
+        rand_id = np.random.choice(self.similar_id_to_query)
+        return (self.id_to_query[rand_id].get_title_feature_vector(), self.id_to_query[rand_id].get_body_feature_vector())
 
 
     def get_random_query_vectors(self):
-        rand_ids = np.random.choice(self.random_queries, QuerySet.NUM_RAND_QUESTIONS_THRESHOLD)
-        title_vectors = torch.cat([self.queries[rand_id].get_title_feature_vector().unsqueeze(0) for rand_id in rand_ids],0)
-        body_vectors = torch.cat([self.queries[rand_id].get_body_feature_vector().unsqueeze(0) for rand_id in rand_ids], 0)
+        rand_ids = np.random.choice(self.random_id_to_query, QuerySet.NUM_RAND_QUESTIONS_THRESHOLD)
+        title_vectors = torch.cat([self.id_to_query[rand_id].get_title_feature_vector().unsqueeze(0) for rand_id in rand_ids],0)
+        body_vectors = torch.cat([self.id_to_query[rand_id].get_body_feature_vector().unsqueeze(0) for rand_id in rand_ids], 0)
         return (title_vectors, body_vectors)
 
 
-
-
 class TestingQuerySet(object):
-    def __init__(self, id, similar_queries, candidate_queries, bm25_scores):
+    NUM_OF_CANDIDATE_QUERIES = 20
+    def __init__(self, id, similar_queries, candidate_queries, bm25_scores, id_to_query):
         # Id of main query 
         self.id = id
-        # Similar queries 
-        self.similiar_queries = similar_queries
-        # List of 20 candidate queries (super set of similar queries)
+        # List of 20 candidate id_to_query (super set of similar id_to_query)
         self.candidate_queries = candidate_queries
-        # Scores generated by some metric to indicate how well the main query and the candidate queries match
-        self.bm25_scores = bm25_scores
+        # The similarity vector is 1 if the candidate query is similar to the original query
+        self.similarity_vector = torch.LongTensor([1 if query in similar_queries else 0 for query in candidate_queries])
+        # Scores generated by some metric to indicate how well the main query and the candidate id_to_query match
+        self.bm25_scores = torch.FloatTensor(bm25_scores)
+        self.id_to_query = id_to_query
 
+    def get_query_vector(self):
+        return (self.id_to_query[self.id].get_title_feature_vector(), self.id_to_query[self.id].get_body_feature_vector())
 
+    def get_similarity_vector(self):
+        return self.similarity_vector
+
+    def get_candidate_query_vectors(self):
+        title_vectors = torch.cat([self.id_to_query[cand_id].get_title_feature_vector().unsqueeze(0) for cand_id in self.candidate_queries], 0)
+        body_vectors = torch.cat([self.id_to_query[cand_id].get_body_feature_vector().unsqueeze(0) for cand_id in self.candidate_queries], 0)
+        return (title_vectors, body_vectors)
+
+    def get_bm25_scores(self):
+        return self.bm25_scores
 
 
 class Query(object):
@@ -205,5 +214,8 @@ class Query(object):
 
 if __name__=="__main__":
     query_database = QueryDatabase(sample=False)
-    print query_database[0]
-    #print query_database.queries[1].get_title_feature_vector()
+    testing_set  = query_database.get_testing_dataset()
+    for batch in testing_set:
+        print(batch)
+        break
+    #print query_database
