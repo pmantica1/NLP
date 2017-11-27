@@ -112,10 +112,11 @@ def test(cnn, dataset, threshold):
 def compute_metrics(true_positives_list, true_negatives_list, false_positives_list, false_negatives_list):
     n = len(true_positives_list)
 
-    map = np.array([true_positives_list[i]/float(true_negatives_list[i] +true_positives_list[i]) for i in range(n)])
+    map = np.array([true_positives_list[i]/float(false_positives_list[i] +true_positives_list[i]) for i in range(n)])
     map = np.average(map[~np.isnan(map)])
     print("The MAP score is "+str(map))
-    mar = np.average([true_positives_list[i] / float(false_positives_list[i] + true_positives_list[i]) for i in range(n)])
+    mar = np.array([true_positives_list[i] / float(false_negatives_list[i] + true_positives_list[i]) for i in range(n)])
+    mar = np.average(mar[~np.isnan(mar)])
     print("The MAR score is " + str(mar))
 
 
@@ -134,13 +135,12 @@ def test_step(cnn, batch, threshold):
     question_vec = question_vector_batch[0]
     similarity_vector = similarity_vector_batch[0]
     candidate_questions_vec  = candidate_vector_batch[0]
-    cosines = [np.cos(question_vec.flatten().dot(candidate_questions_vec[0].flatten())) for i in range(len(candidate_questions_vec))]
+    cosines = [np.cos(question_vec.flatten().dot(candidate_questions_vec[:, i].flatten())) for i in range(len(candidate_questions_vec[0]))]
     choices = np.array([1 if cos > threshold else 0 for cos in cosines])
     true_positives =  choices.dot(similarity_vector)
     true_negatives = (1-choices).dot(1-similarity_vector)
     false_positives = (choices).dot(1-similarity_vector)
     false_negatives = (1-choices).dot(similarity_vector)
-
     return true_positives, true_negatives, false_positives, false_negatives
 
 
@@ -172,7 +172,7 @@ if __name__ == "__main__":
     loss.backward()
     """
     feature_vector_dimensions = 200
-    questions_vector_dimensions = 100
+    questions_vector_dimensions = 667
     kernel_size = 3
 
     learning_rate = 1e-3
@@ -187,6 +187,5 @@ if __name__ == "__main__":
 
     train(cnn, dataset, learning_rate, l2_weight_decay, n_epochs, batch_size)
 
-    cnn = CNN(200, 20, 3)
     dataset = database.get_validation_dataset()
-    test(cnn, dataset,0.5)
+    test(cnn, dataset,0.9)
