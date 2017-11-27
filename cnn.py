@@ -44,10 +44,10 @@ class Loss(nn.Module):
         other_questions_batch = torch.cat([similar_question_batch, negative_questions_batch], 2)
         expanded_question_batch = question_batch.expand(other_questions_batch.data.shape)
         scores = self.cosine_similarity(expanded_question_batch, other_questions_batch)
-        margin = 0.1 * torch.ones(scores[:, 0].data.shape)
+        margin = 0.01 * torch.ones(scores[:, 0].data.shape)
         margin[0] = 0
         margin = Variable(margin)
-        return (scores - (scores[:, 0] - margin).unsqueeze(1)).max(1)[0].mean()
+        return ((scores - (scores[:, 0] - margin).unsqueeze(1)).max(1)[0]).mean()
 
 
 def train(cnn, dataset, learning_rate, l2_weight_decay, n_epochs, batch_size):
@@ -109,9 +109,8 @@ if __name__ == "__main__":
     print loss
     loss.backward()
     """
-
     feature_vector_dimensions = 200
-    questions_vector_dimensions = 20
+    questions_vector_dimensions = 667
     kernel_size = 3
 
     learning_rate = 1e-3

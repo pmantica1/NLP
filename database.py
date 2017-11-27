@@ -17,7 +17,7 @@ class QueryDatabase():
         self.testing_sets = self.load_testing_sets("data/test.txt", sample)
 
     def get_training_dataset(self):
-        return datasets.TrainingDataloader(self.id_to_query, self.query_sets)
+        return datasets.TrainingDataset(self.id_to_query, self.query_sets)
 
     def get_validation_dataset(self):
         return datasets.TestingDataset(self.id_to_query, self.validation_sets)
