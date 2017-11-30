@@ -1,10 +1,11 @@
 import torch
-import numpy as np
 from torch import nn
 from torch.autograd import Variable
 from database import QueryDatabase
 import torch.utils.data as data
 from tqdm import tqdm
+from scipy.spatial.distance import cosine
+from metrics import compute_metrics
 
 TITLE_VEC = "title_vec"
 BODY_VEC = "body_vec"
@@ -16,13 +17,17 @@ SIMILARITY_VEC = "similarity_vec"
 BM25_SCORES = "bm25_scores"
 CAND_TITLE_VECS = "cand_title_vecs"
 CAND_BODY_VECS = "cand_body_vecs"
+MAP = 'MAP'
+MRR = 'MRR'
+P1 = 'P1'
+P5 = 'P5'
+
 
 class CNN(nn.Module):
     def __init__(self, feature_vector_dimensions, output_size, kernel_size):
         super(CNN, self).__init__()
         self.cnn = nn.Conv1d(feature_vector_dimensions, output_size, kernel_size)
         self.tanh = nn.Tanh()
-        self.pooling = nn.MaxPool1d(kernel_size)
 
     def forward(self, feature_vectors):
         """
@@ -34,9 +39,7 @@ class CNN(nn.Module):
         """
         output = self.cnn(feature_vectors)
         output = self.tanh(output)
-        output = self.pooling(output)
-        output = output.mean(dim=2)
-        output = output.unsqueeze(2)
+        output = output.mean(dim=2).unsqueeze(2)
         return output
 
 
@@ -49,22 +52,17 @@ class Loss(nn.Module):
         other_questions_batch = torch.cat([similar_question_batch, negative_questions_batch], 2)
         expanded_question_batch = question_batch.expand(other_questions_batch.data.shape)
         scores = self.cosine_similarity(expanded_question_batch, other_questions_batch)
-        margin = 0.01 * torch.ones(scores[:, 0].data.shape)
-        margin[0] = 0
+        margin = 0.5 * torch.ones(scores.data.shape)
+        margin[:, 0] = 0
         margin = Variable(margin)
-        return ((scores - (scores[:, 0] - margin).unsqueeze(1)).max(1)[0]).mean()
+        batch_losses = (margin + scores - scores[:, 0].unsqueeze(1).expand(scores.data.shape)).max(1)[0]
+        return batch_losses.mean()
 
 
-def train(cnn, dataset, learning_rate, l2_weight_decay, n_epochs, batch_size):
-    optimizer = torch.optim.Adam(cnn.parameters(), lr=learning_rate, weight_decay=l2_weight_decay)
-    for epoch in xrange(n_epochs):
-        data_loader = data.DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
-        counter = 0
-        for batch in tqdm(data_loader):
-            counter += 1
-            train_step(cnn, batch, optimizer)
-            if counter == 20:
-                break
+def train_epoch(cnn, dataset, optimizer, batch_size):
+    data_loader = data.DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+    for batch in tqdm(data_loader):
+        train_step(cnn, batch, optimizer)
 
 
 def train_step(cnn, batch, optimizer):
@@ -89,38 +87,23 @@ def train_step(cnn, batch, optimizer):
         loss = loss_fn(questions_batch, similar_questions_batch, negative_questions_batch)
 
         loss.backward()
-        print loss
         return loss
 
     optimizer.step(closure)
 
-def test(cnn, dataset, threshold):
+
+def test(cnn, dataset):
     data_loader = data.DataLoader(dataset, batch_size=1)
-    true_positives_list= []
-    true_negatives_list = []
-    false_positives_list = []
-    false_negatives_list = []
+    cosines_list = []
+    similarity_vector_list = []
     for batch in data_loader:
-        true_positives, true_negatives, false_positives, false_negatives = test_step(cnn, batch, threshold)
-        true_positives_list.append(true_positives)
-        true_negatives_list.append(true_negatives)
-        false_positives_list.append(false_positives)
-        false_negatives_list.append(false_negatives)
+        cosines, similarity_vector = test_step(cnn, batch)
+        cosines_list.append(cosines)
+        similarity_vector_list.append(similarity_vector)
 
-    compute_metrics(true_positives_list, true_negatives_list, false_positives_list, false_negatives_list)
+    print compute_metrics(cosines_list, similarity_vector_list)
 
-def compute_metrics(true_positives_list, true_negatives_list, false_positives_list, false_negatives_list):
-    n = len(true_positives_list)
-
-    map = np.array([true_positives_list[i]/float(false_positives_list[i] +true_positives_list[i]) for i in range(n)])
-    map = np.average(map[~np.isnan(map)])
-    print("The MAP score is "+str(map))
-    mar = np.array([true_positives_list[i] / float(false_negatives_list[i] + true_positives_list[i]) for i in range(n)])
-    mar = np.average(mar[~np.isnan(mar)])
-    print("The MAR score is " + str(mar))
-
-
-def test_step(cnn, batch, threshold):
+def test_step(cnn, batch):
     questions_title_batch = batch[TITLE_VEC]
     questions_body_batch = batch[BODY_VEC]
 
@@ -135,17 +118,8 @@ def test_step(cnn, batch, threshold):
     question_vec = question_vector_batch[0]
     similarity_vector = similarity_vector_batch[0]
     candidate_questions_vec  = candidate_vector_batch[0]
-    cosines = [np.cos(question_vec.flatten().dot(candidate_questions_vec[:, i].flatten())) for i in range(len(candidate_questions_vec[0]))]
-    choices = np.array([1 if cos > threshold else 0 for cos in cosines])
-    true_positives =  choices.dot(similarity_vector)
-    true_negatives = (1-choices).dot(1-similarity_vector)
-    false_positives = (choices).dot(1-similarity_vector)
-    false_negatives = (1-choices).dot(similarity_vector)
-    return true_positives, true_negatives, false_positives, false_negatives
-
-
-
-
+    cosines = [1-cosine(question_vec.flatten(), candidate_questions_vec[:, i].flatten()) for i in range(len(candidate_questions_vec[0]))]
+    return cosines, similarity_vector
 
 
 def evaluate(cnn, title, body):
@@ -172,20 +146,27 @@ if __name__ == "__main__":
     loss.backward()
     """
     feature_vector_dimensions = 200
-    questions_vector_dimensions = 667
+    questions_vector_dimensions = 100
     kernel_size = 3
 
     learning_rate = 1e-3
-    l2_weight_decay = 1e-5
-    n_epochs = 1
-    batch_size = 50
+    weight_decay = 1e-5
+    n_epochs = 20
+    batch_size = 16
 
     cnn = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size)
 
     database = QueryDatabase()
-    dataset = database.get_training_dataset()
+    training_dataset = database.get_training_dataset()
+    validation_dataset = database.get_validation_dataset()
+    test_dataset = database.get_testing_dataset()
 
-    train(cnn, dataset, learning_rate, l2_weight_decay, n_epochs, batch_size)
+    optimizer = torch.optim.Adam(cnn.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
-    dataset = database.get_validation_dataset()
-    test(cnn, dataset,0.9)
+    for epoch in xrange(n_epochs):
+        train_epoch(cnn, training_dataset, optimizer, batch_size)
+        test(cnn, validation_dataset)
+
+    test(cnn, test_dataset)
+
+
