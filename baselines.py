@@ -12,8 +12,8 @@ def compute_baselines():
         similarity_vector_list = []
         bm25_scores_list = []
         for ind_sample in dataset:
-            similarity_vector_list.append(ind_sample["similarity_vec"])
-            bm25_scores_list.append(ind_sample["bm25_scores"])
+            similarity_vector_list.append(ind_sample["similarity_vec"].numpy())
+            bm25_scores_list.append(ind_sample["bm25_scores"].numpy())
         metrics_list.append(metrics.compute_metrics(bm25_scores_list, similarity_vector_list))
     return {"validation": metrics_list[0], "testing": metrics_list[1]}
 
