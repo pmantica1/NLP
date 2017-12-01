@@ -2,6 +2,9 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 
+from database import QueryDatabase
+from nn_utils import train_epoch, test
+
 
 class LSTM(nn.Module):
     def __init__(self, input_size, hidden_size, batch_size):
@@ -34,11 +37,31 @@ class LSTM(nn.Module):
     def init_state(self):
         return Variable(torch.zeros(1, self.batch_size, self.hidden_size))
 
+    def evaluate(self, title, body):
+        title_inp = Variable(title.permute(1, 0, 2))
+        title_hidden = self.init_hidden()
+        title_state = self.init_state()
+
+        body_inp = Variable(body.permute(1, 0, 2))
+        body_hidden = self.init_hidden()
+        body_state = self.init_state()
+
+        for i in range(len(title_inp)):
+            title_hidden, title_state = self.forward(title_inp[i].unsqueeze(0), title_hidden, title_state)
+
+        for i in range(len(body_inp)):
+            body_hidden, body_state = self.forward(body_inp[i].unsqueeze(0), body_hidden, body_state)
+
+        title_vec = title_hidden.permute(1, 2, 0)
+        body_vec = body_hidden.permute(1,2,0)
+
+        return (title_vec + body_vec) / 2
 
 if __name__ == "__main__":
+    """
     input_size = 10
     hidden_size = 5
-    batch_size = 3
+    batch_size = 20
 
     lstm = LSTM(input_size, hidden_size, batch_size)
     feature_vectors = Variable(torch.rand(1, batch_size, input_size))
@@ -49,3 +72,32 @@ if __name__ == "__main__":
     print feature_vectors
     print new_hidden
     print new_state
+    loss_fn = Loss()
+    loss = loss_fn(new_hidden, new_hidden, torch.rand(batch_size, hidden_size))
+    print loss
+    loss.backward()
+    print loss
+    """
+
+    feature_vector_dimensions = 200
+    questions_vector_dimensions = 100
+
+    learning_rate = 1e-3
+    weight_decay = 1e-5
+    n_epochs = 20
+    batch_size = 16
+
+    lstm = LSTM(feature_vector_dimensions, questions_vector_dimensions, batch_size)
+
+    database = QueryDatabase()
+    training_dataset = database.get_training_dataset()
+    validation_dataset = database.get_validation_dataset()
+    test_dataset = database.get_testing_dataset()
+
+    optimizer = torch.optim.Adam(lstm.parameters(), lr=learning_rate, weight_decay=weight_decay)
+
+    for epoch in xrange(n_epochs):
+        train_epoch(lstm, training_dataset, optimizer, batch_size)
+        test(lstm, validation_dataset)
+
+    test(lstm, test_dataset)
