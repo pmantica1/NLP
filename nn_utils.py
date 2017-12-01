@@ -35,7 +35,7 @@ class Loss(nn.Module):
         scores = self.cosine_similarity(expanded_question_batch, other_questions_batch)
         margin = 0.5 * torch.ones(scores.data.shape)
         margin[:, 0] = 0
-        margin = Variable(margin).cuda()
+        margin = Variable(margin)
         batch_losses = (margin + scores - scores[:, 0].unsqueeze(1).expand(scores.data.shape)).max(1)[0]
         return batch_losses.mean()
 

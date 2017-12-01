@@ -45,8 +45,8 @@ class CNN(nn.Module):
         return output
 
     def evaluate(self, title, body):
-        title_vec = cnn(Variable(title.permute(0, 2, 1)).cuda())
-        body_vec = cnn(Variable(body.permute(0, 2, 1)).cuda())
+        title_vec = cnn(Variable(title.permute(0, 2, 1)))
+        body_vec = cnn(Variable(body.permute(0, 2, 1)))
         return (title_vec + body_vec) / 2
 
 
