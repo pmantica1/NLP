@@ -6,24 +6,106 @@ import torch
 import datasets
 from tqdm import tqdm
 
+class AndroidDatabase():
+    def __init__(self):
+        self.queryDatabase = QueryDatabase()
+        self.queryDatabase.load_id_to_query("android_data/corpus.txt")
+        self.validation_pos = self.load_data_pairs("android_data/dev.pos.txt")
+        self.validation_neg = self.load_data_pairs("android_data/dev.neg.txt")
+        self.test_pos = self.load_data_pairs("android_data/test.pos.txt")
+        self.test_neg = self.load_data_pairs("android_data/test.neg.txt")
+
+    def get_validation_dataset(self):
+        return datasets.UbuntuTrainingDataset(self.validation_neg+self.validation_pos)
+
+    def get_testing_dataset(self):
+        return datasets.UbuntuTrainingDataset(self.test_neg+self.test_pos)
+
+    def load_data_pairs(self, filename, use_count_vectorizer = False):
+        query_pairs = []
+        sentiment = (1 if "pos" in filename else -1)
+        print("Loading pairs from "+filename)
+        with open(filename) as infile:
+            reader = csv.reader(infile, delimiter="\t")
+            for row in tqdm(reader):
+                id_1 = int(row[0])
+                id_2 = int(row[1])
+                pair = QueryPair(id_1, id_2, sentiment, self.queryDatabase.id_to_query)
+                query_pairs.append(pair)
+        return query_pairs
+
+
+class UbuntuDabatase():
+    def __init__(self):
+        self.queryDatabase = QueryDatabase()
+        self.queryDatabase.load_id_to_query("data/texts_raw_fixed.txt")
+        self.query_sets = self.load_query_sets()
+        self.validation_sets = self.load_testing_sets("data/dev.txt")
+        self.testing_sets = self.load_testing_sets("data/test.txt")
+
+    def get_training_dataset(self):
+        return datasets.UbuntuTrainingDataset(self.query_sets)
+
+    def get_validation_dataset(self):
+        return datasets.UbuntuTestingDataset(self.validation_sets)
+
+    def get_testing_dataset(self):
+        return datasets.UbuntuTestingDataset(self.testing_sets)
+
+    def load_query_sets(self, sample):
+        """
+        Loades the query set
+        :param sample: boolean true if we want only a sample of 1000 querie sets
+        :return: the of query sets in the text
+        """
+        query_sets = []
+        print("Loading query sets...")
+        with open("data/train_random.txt") as infile:
+            count = 0
+            reader = csv.reader(infile, delimiter="\t")
+            for row in tqdm(reader):
+                count += 1
+                id = int(row[0])
+                similar_id_to_query = [int(question_id) for question_id in row[1].split()]
+                random_id_to_query = [int(question_id) for question_id in row[2].split()]
+                query_set = QuerySet(id, similar_id_to_query, random_id_to_query, self.queryDatabase.id_to_query)
+                query_sets.append(query_set)
+                if (sample and count > 10000):
+                    break
+        return query_sets
+
+
+
+    def load_testing_sets(self, filename, sample):
+        """
+        Loads the testing query set in filename
+        :param filename: the filename from which to extract the testing query set
+        :param sample: boolean true if we want only a sample of 1000 querie sets
+        :return: the of query sets in the text
+        """
+        testing_query_sets = []
+        print("Loading %s...", filename)
+        with open(filename) as infile:
+            count = 0
+            reader = csv.reader(infile, delimiter="\t")
+            for row in tqdm(reader):
+                count += 1
+                id = int(row[0])
+                similar_id_to_query = [int(question_id) for question_id in row[1].split()]
+                candidate_id_to_query = [int(question_id) for question_id in row[2].split()]
+                bm25_scores = [float(score) for score in row[3].split()]
+                query_set = TestingQuerySet(id, similar_id_to_query, candidate_id_to_query, bm25_scores, self.queryDatabase.id_to_query)
+                testing_query_sets.append(query_set)
+                if (sample and count > 10000):
+                    break
+        return testing_query_sets
+
 
 class QueryDatabase():
     def __init__(self, sample=False):
         self.word2vec =  self.load_vectors(sample)
         self.id_to_query = {}
         self.load_id_to_query(sample)
-        self.query_sets = self.load_query_sets(sample)
-        self.validation_sets = self.load_testing_sets("data/dev.txt", sample)
-        self.testing_sets = self.load_testing_sets("data/test.txt", sample)
-
-    def get_training_dataset(self):
-        return datasets.TrainingDataset(self.id_to_query, self.query_sets)
-
-    def get_validation_dataset(self):
-        return datasets.TestingDataset(self.id_to_query, self.validation_sets)
-
-    def get_testing_dataset(self):
-        return datasets.TestingDataset(self.id_to_query, self.testing_sets)
 
     def add_query(self, id, title, body):
         """
@@ -55,14 +137,14 @@ class QueryDatabase():
                     break
         return word2vec
 
-    def load_id_to_query(self, sample):
+    def load_id_to_query(self, filename, sample=False):
         """
         Loads the id_to_query into the query dictionary
         :param sample: boolean true if we want only a sample of 1000 id_to_query
         :return: nothing
         """
         print("Loading id_to_query...")
-        with open("data/texts_raw_fixed.txt") as infile:
+        with open(filename) as infile:
             count = 0
             reader = csv.reader(infile, delimiter="\t")
             for row in tqdm(reader):
@@ -74,54 +156,21 @@ class QueryDatabase():
                 if (sample and count > 10000):
                     break
 
+class QueryPair(object):
+    def __init__(self, id_1, id_2, similarity, id_to_query):
+        self.id_1 = id_1
+        self.id_2 = id_2
+        # Similarity can be -1, (negative pair), or +1 (positive pair)
+        self.similarity = similarity
 
-    def load_query_sets(self, sample):
-        """
-        Loades the query set
-        :param sample: boolean true if we want only a sample of 1000 querie sets
-        :return: the of query sets in the text
-        """
-        query_sets = []
-        print("Loading query sets...")
-        with open("data/train_random.txt") as infile:
-            count = 0
-            reader = csv.reader(infile, delimiter="\t")
-            for row in tqdm(reader):
-                count += 1
-                id = int(row[0])
-                similar_id_to_query = [int(question_id) for question_id in row[1].split()]
-                random_id_to_query = [int(question_id) for question_id in row[2].split()]
-                query_set = QuerySet(id, similar_id_to_query, random_id_to_query, self.id_to_query)
-                query_sets.append(query_set)
-                if (sample and count > 10000):
-                    break
-        return query_sets
+    def get_query_vector_1(self):
+        return (self.id_to_query[self.id_1].get_title_feature_vector(), self.id_to_query[self.id_1].get_body_feature_vector())
 
+    def get_query_vector_2(self):
+        return (self.id_to_query[self.id_2].get_title_feature_vector(), self.id_to_query[self.id_2].get_body_feature_vector())
 
-
-    def load_testing_sets(self, filename, sample):
-        """
-        Loads the testing query set in filename 
-        :param filename: the filename from which to extract the testing query set
-        :param sample: boolean true if we want only a sample of 1000 querie sets
-        :return: the of query sets in the text
-        """
-        testing_query_sets = []
-        print("Loading %s...", filename)
-        with open(filename) as infile:
-            count = 0
-            reader = csv.reader(infile, delimiter="\t")
-            for row in tqdm(reader):
-                count += 1
-                id = int(row[0])
-                similar_id_to_query = [int(question_id) for question_id in row[1].split()]
-                candidate_id_to_query = [int(question_id) for question_id in row[2].split()]
-                bm25_scores = [float(score) for score in row[3].split()]
-                query_set = TestingQuerySet(id, similar_id_to_query, candidate_id_to_query, bm25_scores, self.id_to_query)
-                testing_query_sets.append(query_set)
-                if (sample and count > 10000):
-                    break
-        return testing_query_sets
+    def get_similarity(self):
+        return self.similarity
 
 
 

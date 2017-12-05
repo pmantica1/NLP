@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 
-from database import QueryDatabase
+from database import UbuntuDabatase
 from nn_utils import train_epoch, test
 
 from tqdm import tqdm
@@ -96,7 +96,7 @@ if __name__ == "__main__":
 
     lstm = LSTM(feature_vector_dimensions, questions_vector_dimensions, batch_size)
 
-    database = QueryDatabase()
+    database = UbuntuDatabase()
     training_dataset = database.get_training_dataset()
     validation_dataset = database.get_validation_dataset()
     test_dataset = database.get_testing_dataset()
