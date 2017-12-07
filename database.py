@@ -5,6 +5,7 @@ import torch.utils.data as data
 import torch
 import datasets
 from tqdm import tqdm
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 class AndroidDatabase():
     def __init__(self):
@@ -21,7 +22,7 @@ class AndroidDatabase():
     def get_testing_dataset(self):
         return datasets.UbuntuTrainingDataset(self.test_neg+self.test_pos)
 
-    def load_data_pairs(self, filename, use_count_vectorizer = False):
+    def load_data_pairs(self, filename):
         query_pairs = []
         sentiment = (1 if "pos" in filename else -1)
         print("Loading pairs from "+filename)
@@ -52,7 +53,7 @@ class UbuntuDabatase():
     def get_testing_dataset(self):
         return datasets.UbuntuTestingDataset(self.testing_sets)
 
-    def load_query_sets(self, sample):
+    def load_query_sets(self):
         """
         Loades the query set
         :param sample: boolean true if we want only a sample of 1000 querie sets
@@ -61,7 +62,6 @@ class UbuntuDabatase():
         query_sets = []
         print("Loading query sets...")
         with open("data/train_random.txt") as infile:
-            count = 0
             reader = csv.reader(infile, delimiter="\t")
             for row in tqdm(reader):
                 count += 1
@@ -70,8 +70,6 @@ class UbuntuDabatase():
                 random_id_to_query = [int(question_id) for question_id in row[2].split()]
                 query_set = QuerySet(id, similar_id_to_query, random_id_to_query, self.queryDatabase.id_to_query)
                 query_sets.append(query_set)
-                if (sample and count > 10000):
-                    break
         return query_sets
 
 
@@ -102,21 +100,13 @@ class UbuntuDabatase():
 
 
 class QueryDatabase():
-    def __init__(self, sample=False):
-        self.word2vec =  self.load_vectors(sample)
+    def __init__(self, sample=False, use_count_vectorizer = False):
+        self.word2vec = self.load_vectors(sample)
+        self.vectorizer = TfidfVectorizer()
+        if (use_count_vectorizer):
+            self.vectorizer.fit(self.corpus_text_generator())
         self.id_to_query = {}
-        self.load_id_to_query(sample)
-
-    def add_query(self, id, title, body):
-        """
-        :param id: int id of this query
-        :param title: list of words of title
-        :param body: list of words of body
-        :return: nothing
-        """
-        if id in self.id_to_query:
-            raise RuntimeError("Added same query to database")
-        self.id_to_query[id] = Query(title, body, self.word2vec)
+        self.load_id_to_query(sample, use_count_vectorizer)
 
     def load_vectors(self, sample=False):
         """
@@ -137,29 +127,44 @@ class QueryDatabase():
                     break
         return word2vec
 
-    def load_id_to_query(self, filename, sample=False):
+
+    def load_id_to_query(self, filename, use_count_vectorizer):
         """
         Loads the id_to_query into the query dictionary
-        :param sample: boolean true if we want only a sample of 1000 id_to_query
         :return: nothing
         """
         print("Loading id_to_query...")
         with open(filename) as infile:
-            count = 0
             reader = csv.reader(infile, delimiter="\t")
             for row in tqdm(reader):
-                count +=1
                 id = int(row[0])
                 title = row[1]
                 body = row[2]
-                self.add_query(id, title,body)
-                if (sample and count > 10000):
-                    break
+                if not use_count_vectorizer:
+                    self.id_to_query[id] = Word2VecQuery(title, body, self.word2vec)
+                else:
+                    self.id_to_query[id] = VectorizerQuery(title, body, self.vectorizer)
+
+    def corpus_text_generator(self, filename):
+        """
+        Loads the corpus (used to train the CountVectorizer
+        :param filename:  the name of the file
+        :return: nothing
+        """
+        print("Loading corpus...")
+        with open(filename) as infile:
+            reader = csv.reader(infile, delimiter="\t")
+            for row in tqdm(reader):
+                title = row[1]
+                body = row[2]
+                yield title
+                yield body
 
 class QueryPair(object):
     def __init__(self, id_1, id_2, similarity, id_to_query):
         self.id_1 = id_1
         self.id_2 = id_2
+        self.id_to_query = id_to_query
         # Similarity can be -1, (negative pair), or +1 (positive pair)
         self.similarity = similarity
 
@@ -228,7 +233,7 @@ class TestingQuerySet(object):
         return self.bm25_scores
 
 
-class Query(object):
+class Word2VecQuery(object):
     # Titles with a length greater than 20 get their feature vectors truncated. Those with a smaller size are padded with zeroes
     MAX_TITLE_LENGTH = 20
     # Same as above
@@ -259,6 +264,22 @@ class Query(object):
 
     def get_body_feature_vector(self):
         return self.get_feature_vector(self.body_tokens, Query.MAX_BODY_LENGTH)
+
+
+class VectorizerQuery(object):
+    def __init__(self, title, body, vectorizer):
+        self.title = title
+        self.body = body
+        self.vectorizer =vectorizer
+
+    def get_feature_vector(self, text):
+        return self.vectorizer.transform(text)
+
+    def get_title_feature_vector(self):
+        return self.get_feature_vector(self.title)
+
+    def get_body_feature_vector(self):
+        return self.get_feature_vector(self.body)
 
 
 if __name__=="__main__":
