@@ -7,6 +7,7 @@ import datasets
 from tqdm import tqdm
 
 
+
 class QueryDatabase():
     def __init__(self, sample=False):
         self.word2vec =  self.load_vectors(sample)

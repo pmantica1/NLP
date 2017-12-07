@@ -15,7 +15,7 @@ class LSTM(nn.Module):
         self.hidden_size = hidden_size
         self.batch_size = batch_size
 
-        self.rnn = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=1)
+        self.rnn = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=1, bidirectional=True)
 
     def forward(self, feature_vectors, hidden, state):
         """
@@ -34,10 +34,10 @@ class LSTM(nn.Module):
         return output, new_hidden, new_state
 
     def init_hidden(self, batch_size):
-        return Variable(torch.zeros(1, batch_size, self.hidden_size))
+        return Variable(torch.zeros(2, batch_size, self.hidden_size))
 
     def init_state(self, batch_size):
-        return Variable(torch.zeros(1, batch_size, self.hidden_size))
+        return Variable(torch.zeros(2, batch_size, self.hidden_size))
 
     def evaluate(self, title, body):
         title_inp = Variable(title.permute(1, 0, 2))
@@ -53,11 +53,7 @@ class LSTM(nn.Module):
 
         title_vec, title_hidden, title_state = self.forward(title_inp, title_hidden, title_state)
 
-        #start = time.time()
         body_vec, body_hidden, body_state = self.forward(body_inp, body_hidden, body_state)
-        #end = time.time()
-        #print end - start
-
 
         title_vec = torch.mean(title_vec, 0).unsqueeze(0).permute(1, 2, 0)
         body_vec = torch.mean(body_vec,0).unsqueeze(0).permute(1,2,0)
@@ -95,6 +91,11 @@ if __name__ == "__main__":
     batch_size = 16
 
     lstm = LSTM(feature_vector_dimensions, questions_vector_dimensions, batch_size)
+
+    for param in lstm.parameters():
+        print param
+
+    exit()
 
     database = QueryDatabase()
     training_dataset = database.get_training_dataset()
