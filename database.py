@@ -273,13 +273,13 @@ class VectorizerQuery(object):
         self.vectorizer =vectorizer
 
     def get_feature_vector(self, text):
-        return self.vectorizer.transform(text)
+        return torch.from_numpy(self.vectorizer.transform(text))
 
     def get_title_feature_vector(self):
-        return self.get_feature_vector(self.title)
+        return torch.from_numpy(self.get_feature_vector(self.title))
 
     def get_body_feature_vector(self):
-        return self.get_feature_vector(self.body)
+        return torch.from_numpy(self.get_feature_vector(self.body))
 
 
 if __name__=="__main__":
