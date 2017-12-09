@@ -39,7 +39,7 @@ class UbuntuTrainingDataset(data.Dataset):
 
 
 class UbuntuTestingDataset(data.Dataset):
-    def __init__(self, id_to_query, testing_sets):
+    def __init__(self, testing_sets):
         self.testing_sets = testing_sets
 
     def __len__(self):

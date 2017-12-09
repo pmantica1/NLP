@@ -8,25 +8,25 @@ from tqdm import tqdm
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 class AndroidDatabase():
-    def __init__(self):
-        self.queryDatabase = QueryDatabase("android_data/corpus.txt")
+    def __init__(self, use_count_vectorizer=False):
+        self.queryDatabase = QueryDatabase("android_data/corpus.txt", use_count_vectorizer)
         self.validation_pos = self.load_data_pairs("android_data/dev.pos.txt")
         self.validation_neg = self.load_data_pairs("android_data/dev.neg.txt")
         self.test_pos = self.load_data_pairs("android_data/test.pos.txt")
         self.test_neg = self.load_data_pairs("android_data/test.neg.txt")
 
     def get_validation_dataset(self):
-        return datasets.UbuntuTrainingDataset(self.validation_neg+self.validation_pos)
+        return datasets.AndroidTestingDataset(self.validation_neg+self.validation_pos)
 
     def get_testing_dataset(self):
-        return datasets.UbuntuTrainingDataset(self.test_neg+self.test_pos)
+        return datasets.AndroidTestingDataset(self.test_neg+self.test_pos)
 
     def load_data_pairs(self, filename):
         query_pairs = []
         sentiment = (1 if "pos" in filename else -1)
         print("Loading pairs from "+filename)
         with open(filename) as infile:
-            reader = csv.reader(infile, delimiter="\t")
+            reader = csv.reader(infile, delimiter=" ")
             for row in tqdm(reader):
                 id_1 = int(row[0])
                 id_2 = int(row[1])
@@ -93,7 +93,7 @@ class QueryDatabase():
         self.word2vec = self.load_vectors()
         self.vectorizer = TfidfVectorizer()
         if (use_count_vectorizer):
-            self.vectorizer.fit(self.corpus_text_generator())
+            self.vectorizer.fit(self.corpus_text_generator(filename))
         self.id_to_query = {}
         self.load_id_to_query(filename, use_count_vectorizer)
 
@@ -256,18 +256,17 @@ class VectorizerQuery(object):
         self.vectorizer =vectorizer
 
     def get_feature_vector(self, text):
-        return torch.from_numpy(self.vectorizer.transform(text))
+        return torch.from_numpy(self.vectorizer.transform([text]).todense())
 
     def get_title_feature_vector(self):
-        return torch.from_numpy(self.get_feature_vector(self.title))
+        return self.get_feature_vector(self.title)
 
     def get_body_feature_vector(self):
-        return torch.from_numpy(self.get_feature_vector(self.body))
+        return self.get_feature_vector(self.body)
 
 
 if __name__=="__main__":
-    database = UbuntuDabatase()
+    database = AndroidDatabase(use_count_vectorizer=True)
     testing_set  = database.get_testing_dataset()
     for batch in testing_set:
-        print(batch)
         break
