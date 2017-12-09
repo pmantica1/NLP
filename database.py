@@ -15,17 +15,6 @@ class AndroidDatabase():
         self.test_pos = self.load_data_pairs("android_data/test.pos.txt")
         self.test_neg = self.load_data_pairs("android_data/test.neg.txt")
 
-<<<<<<< HEAD
-
-class QueryDatabase():
-    def __init__(self, sample=False):
-        self.word2vec =  self.load_vectors(sample)
-        self.id_to_query = {}
-        self.load_id_to_query(sample)
-        self.query_sets = self.load_query_sets(sample)
-        self.validation_sets = self.load_testing_sets("data/dev.txt", sample)
-        self.testing_sets = self.load_testing_sets("data/test.txt", sample)
-=======
     def get_validation_dataset(self):
         return datasets.AndroidTestingDataset(self.validation_neg+self.validation_pos)
 
@@ -46,13 +35,12 @@ class QueryDatabase():
         return query_pairs
 
 
-class UbuntuDabatase():
+class UbuntuDatabase():
     def __init__(self):
         self.queryDatabase = QueryDatabase("data/texts_raw_fixed.txt")
         self.query_sets = self.load_query_sets()
         self.validation_sets = self.load_testing_sets("data/dev.txt")
         self.testing_sets = self.load_testing_sets("data/test.txt")
->>>>>>> a29e88a50378f206d3e6ba9202f9fa19fcafac45
 
     def get_training_dataset(self):
         return datasets.UbuntuTrainingDataset(self.query_sets)
