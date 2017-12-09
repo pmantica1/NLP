@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
     cnn = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size)
 
-    database = UbuntuQueryDatabase()
+    database = UbuntuDabatase()
     training_dataset = database.get_training_dataset()
     validation_dataset = database.get_validation_dataset()
     test_dataset = database.get_testing_dataset()
