@@ -225,8 +225,8 @@ class Word2VecQuery(object):
     TOKEN_VECTOR_SIZE = 200
 
     def __init__(self, title, body, word2vec):
-        self.title_tokens = title.split()
-        self.body_tokens = body.split()
+        self.title_tokens = title.lower().split()
+        self.body_tokens = body.lower().split()
         self.word2vec = word2vec
 
     def get_feature_vector(self, token_list, max_length):
@@ -256,7 +256,7 @@ class VectorizerQuery(object):
         self.vectorizer =vectorizer
 
     def get_feature_vector(self, text):
-        return torch.from_numpy(self.vectorizer.transform([text]).todense())
+        return torch.from_numpy(self.vectorizer.transform([text.lower()]).todense())
 
     def get_title_feature_vector(self):
         return self.get_feature_vector(self.title)
