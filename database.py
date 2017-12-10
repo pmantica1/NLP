@@ -6,6 +6,7 @@ import torch
 import datasets
 from tqdm import tqdm
 from sklearn.feature_extraction.text import TfidfVectorizer
+from random import shuffle
 
 class AndroidDatabase():
     def __init__(self, use_count_vectorizer=False):
@@ -16,14 +17,18 @@ class AndroidDatabase():
         self.test_neg = self.load_data_pairs("android_data/test.neg.txt")
 
     def get_validation_dataset(self):
-        return datasets.AndroidTestingDataset(self.validation_neg+self.validation_pos)
+        validation_dataset = self.validation_neg+self.validation_pos
+        shuffle(validation_dataset)
+        return datasets.AndroidTestingDataset(validation_dataset)
 
     def get_testing_dataset(self):
-        return datasets.AndroidTestingDataset(self.test_neg+self.test_pos)
+        testing_dataset = self.test_neg+self.test_pos
+        shuffle(testing_dataset)
+        return datasets.AndroidTestingDataset(testing_dataset)
 
     def load_data_pairs(self, filename):
         query_pairs = []
-        sentiment = (1 if "pos" in filename else -1)
+        sentiment = (1 if "pos" in filename else 0)
         print("Loading pairs from "+filename)
         with open(filename) as infile:
             reader = csv.reader(infile, delimiter=" ")
@@ -256,7 +261,9 @@ class VectorizerQuery(object):
         self.vectorizer =vectorizer
 
     def get_feature_vector(self, text):
-        return torch.from_numpy(self.vectorizer.transform([text]).todense())
+        temp = torch.from_numpy(self.vectorizer.transform([text]).todense())
+        print temp
+        return temp
 
     def get_title_feature_vector(self):
         return self.get_feature_vector(self.title)

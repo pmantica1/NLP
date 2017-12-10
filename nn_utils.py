@@ -4,9 +4,9 @@ from torch.autograd import Variable
 from database import QueryDatabase
 import torch.utils.data as data
 from tqdm import tqdm
-from scipy.spatial.distance import cosine
-from metrics import compute_metrics
-
+from sklearn.metrics.pairwise import paired_cosine_distances as cosine
+from metrics import compute_metrics, AUCMeter
+import numpy as np
 
 TITLE_VEC = "title_vec"
 BODY_VEC = "body_vec"
@@ -22,6 +22,11 @@ MAP = 'MAP'
 MRR = 'MRR'
 P1 = 'P1'
 P5 = 'P5'
+ID1_TITLE_VEC = "id_1_title_vec"
+ID2_TITLE_VEC = "id_2_title_vec"
+ID1_BODY_VEC = "id_1_body_vec"
+ID2_BODY_VEC = "id_2_body_vec"
+SIMILARITY = "similarity"
 
 
 class Loss(nn.Module):
@@ -35,7 +40,7 @@ class Loss(nn.Module):
         scores = self.cosine_similarity(expanded_question_batch, other_questions_batch)
         margin = 0.5 * torch.ones(scores.data.shape)
         margin[:, 0] = 0
-        margin = Variable(margin).cuda()
+        margin = Variable(margin)
         batch_losses = (margin + scores - scores[:, 0].unsqueeze(1).expand(scores.data.shape)).max(1)[0]
         return batch_losses.mean()
 
@@ -102,6 +107,36 @@ def test_step(nn_model, batch):
     candidate_questions_vec  = candidate_vector_batch[0]
     cosines = [1-cosine(question_vec.flatten(), candidate_questions_vec[:, i].flatten()) for i in range(len(candidate_questions_vec[0]))]
     return cosines, similarity_vector
+
+
+def test_auc(nn_model, dataset):
+    data_loader = data.DataLoader(dataset, batch_size=len(dataset)/100)
+    meter = AUCMeter()
+    for batch in tqdm(data_loader):
+        score, similarity = test_auc_step(nn_model, batch)
+        meter.add(score, similarity)
+
+    print meter.value(max_fpr=0.05)
+
+
+def test_auc_step(nn_model, batch):
+    title1 = batch[ID1_TITLE_VEC]
+    body1 = batch[ID1_BODY_VEC]
+
+    title2 = batch[ID2_TITLE_VEC]
+    body2 = batch[ID2_BODY_VEC]
+
+    question1_vec = nn_model.evaluate(title1, body1).data.numpy()[:, :, 0]
+    question2_vec = nn_model.evaluate(title2, body2).data.numpy()[:, :, 0]
+
+
+    assert question1_vec.shape == question2_vec.shape
+
+    scores = 1 - cosine(question1_vec, question2_vec)
+
+    similarities = batch[SIMILARITY].numpy().flatten()
+
+    return torch.FloatTensor(scores), torch.LongTensor(similarities)
 
 
 def evaluate_multi_questions(nn_model, titles, bodies):
