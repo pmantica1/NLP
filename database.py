@@ -9,8 +9,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from random import shuffle
 
 class AndroidDatabase():
-    def __init__(self, use_count_vectorizer=False):
-        self.queryDatabase = QueryDatabase("android_data/corpus.txt", use_count_vectorizer)
+    def __init__(self, use_count_vectorizer=False, use_glove=False):
+        self.queryDatabase = QueryDatabase("android_data/corpus.txt", use_count_vectorizer, use_glove)
         self.validation_pos = self.load_data_pairs("android_data/dev.pos.txt")
         self.validation_neg = self.load_data_pairs("android_data/dev.neg.txt")
         self.test_pos = self.load_data_pairs("android_data/test.pos.txt")
@@ -41,8 +41,8 @@ class AndroidDatabase():
 
 
 class UbuntuDatabase():
-    def __init__(self):
-        self.queryDatabase = QueryDatabase("data/texts_raw_fixed.txt")
+    def __init__(self, use_glove=False):
+        self.queryDatabase = QueryDatabase("data/texts_raw_fixed.txt", False, use_glove)
         self.query_sets = self.load_query_sets()
         self.validation_sets = self.load_testing_sets("data/dev.txt")
         self.testing_sets = self.load_testing_sets("data/test.txt")
@@ -94,21 +94,22 @@ class UbuntuDatabase():
 
 
 class QueryDatabase():
-    def __init__(self, filename, use_count_vectorizer = False):
-        self.word2vec = self.load_vectors()
+    def __init__(self, filename, use_count_vectorizer = False, use_glove=False):
+        self.word2vec = self.load_vectors(use_glove)
         self.vectorizer = TfidfVectorizer()
         if (use_count_vectorizer):
             self.vectorizer.fit(self.corpus_text_generator(filename))
         self.id_to_query = {}
         self.load_id_to_query(filename, use_count_vectorizer)
 
-    def load_vectors(self):
+    def load_vectors(self, use_glove):
         """
         :return: word-to-embedding dictionary
         """
         word2vec = {}
         print("Loading words...")
-        with open("data/vectors_pruned_by_tests_fixed.200.txt") as infile:
+        vectors_file = ("embeddings/glove_prunned.txt" if use_glove else "data/vectors_pruned_by_tests_fixed.200.txt")
+        with open(vectors_file) as infile:
             for line in tqdm(infile):
                 parsed_line = line.split()
                 word = parsed_line[0]
@@ -154,7 +155,7 @@ class QueryPair(object):
         self.id_1 = id_1
         self.id_2 = id_2
         self.id_to_query = id_to_query
-        # Similarity can be -1, (negative pair), or +1 (positive pair)
+        # Similarity can be 0 or +1 (positive pair)
         self.similarity = similarity
 
     def get_query_vector_1(self):
@@ -230,8 +231,8 @@ class Word2VecQuery(object):
     TOKEN_VECTOR_SIZE = 200
 
     def __init__(self, title, body, word2vec):
-        self.title_tokens = title.split()
-        self.body_tokens = body.split()
+        self.title_tokens = title.lower().split()
+        self.body_tokens = body.lower().split()
         self.word2vec = word2vec
 
     def get_feature_vector(self, token_list, max_length):
@@ -261,9 +262,7 @@ class VectorizerQuery(object):
         self.vectorizer =vectorizer
 
     def get_feature_vector(self, text):
-        temp = torch.from_numpy(self.vectorizer.transform([text]).todense())
-        print temp
-        return temp
+        return torch.from_numpy(self.vectorizer.transform([text.lower()]).todense())
 
     def get_title_feature_vector(self):
         return self.get_feature_vector(self.title)
@@ -273,7 +272,7 @@ class VectorizerQuery(object):
 
 
 if __name__=="__main__":
-    database = AndroidDatabase(use_count_vectorizer=True)
+    database = AndroidDatabase(use_count_vectorizer=True, use_glove=True)
     testing_set  = database.get_testing_dataset()
     for batch in testing_set:
         break
