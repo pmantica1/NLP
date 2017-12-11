@@ -14,8 +14,7 @@ class TransferLearningDatabase():
         self.android_database = AndroidDatabase(word2vec=self.ubuntu_database.queryDatabase.word2vec)
         self.android_queries = [query for query in self.android_database.queryDatabase.id_to_query.values()]
         self.ubuntu_queries =  [query for query in self.ubuntu_database.queryDatabase.id_to_query.values()]
-        for query in self.ubuntu_queries:
-            print(query)
+
 
     def get_training_set(self):
         return datasets.TransferLearningDataset(self.ubuntu_database.get_training_dataset(), self.android_queries, self.ubuntu_queries)
@@ -28,7 +27,7 @@ class TransferLearningDatabase():
 
 class AndroidDatabase():
     def __init__(self, use_count_vectorizer=False, use_glove=False, word2vec=None):
-        self.queryDatabase = QueryDatabase("android_data/corpus.txt", use_count_vectorizer, use_glove, word2vec=None)
+        self.queryDatabase = QueryDatabase("android_data/corpus.txt", use_count_vectorizer, use_glove, word2vec=word2vec)
         self.validation_pos = self.load_data_pairs("android_data/dev.pos.txt")
         self.validation_neg = self.load_data_pairs("android_data/dev.neg.txt")
         self.test_pos = self.load_data_pairs("android_data/test.pos.txt")
@@ -302,7 +301,7 @@ class VectorizerQuery(object):
 
 if __name__=="__main__":
     database = TransferLearningDatabase()
-    validation_set  = database.get_validation_set()
-    data_loader = data.DataLoader(validation_set, batch_size=10, shuffle=True, drop_last=True)
-    for batch in data_loader:
+    training_set  = database.get_training_set()
+    data_loader = data.DataLoader(training_set, batch_size=10, shuffle=True, drop_last=True)
+    for batch in training_set:
         print(batch)
