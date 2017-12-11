@@ -1,4 +1,5 @@
 import torch.utils.data as data
+import torch
 
 class TransferLearningDataset(data.Dataset):
     # Precondition is that the android queries and ubuntu queries are randomly ordered 
@@ -13,13 +14,25 @@ class TransferLearningDataset(data.Dataset):
     def __getitem__(self, item):
         if item > len(self):
             raise AttributeError("index out of bounds")
-        random_ubuntu_title_vec, random_ubuntu_body_vec = self.ubuntu_queries[item%len(self.ubuntu_queries)].get_query_vector()
-        random_android_title_vec, random_android_body_vec = self.android_queries[item%len(self.android_queries)].get_query_vector()
+        base_index = item*20
+        list_random_ubuntu_title_vec = []
+        list_random_ubuntu_body_vec = []
+        list_random_android_title_vec = []
+        list_random_android_body_vec = []
+        for i in range(20):
+            ubuntu_index = (base_index+i)%len(self.ubuntu_queries)
+            android_index = (base_index+i)%len(self.android_queries)
+            random_ubuntu_title_vec, random_ubuntu_body_vec = self.ubuntu_queries[ubuntu_index].get_query_vector()
+            random_android_title_vec, random_android_body_vec = self.android_queries[android_index].get_query_vector()
+            list_random_ubuntu_title_vec.append(random_ubuntu_title_vec.unsqueeze(0) )
+            list_random_ubuntu_body_vec.append(random_android_body_vec.unsqueeze(0) )
+            list_random_android_title_vec.append(random_android_title_vec.unsqueeze(0) )
+            list_random_android_body_vec.append(random_android_body_vec.unsqueeze(0) )
         result = self.ubuntu_dataset[item]
-        result["ubuntu_rand_title_vec"] = random_ubuntu_title_vec
-        result["ubuntu_rand_body_vec"] = random_ubuntu_body_vec
-        result["android_rand_title_vec"] = random_android_title_vec
-        result["android_rand_body_vec"] = random_android_body_vec
+        result["ubuntu_rand_title_vecs"] = torch.cat(list_random_ubuntu_title_vec, 0)
+        result["ubuntu_rand_body_vecs"] = torch.cat(list_random_ubuntu_body_vec, 0)
+        result["android_rand_title_vecs"] = torch.cat(list_random_android_title_vec, 0)
+        result["android_rand_body_vecs"] = torch.cat(list_random_android_body_vec,0)
         return result 
 
 
