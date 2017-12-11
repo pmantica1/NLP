@@ -96,6 +96,7 @@ class UbuntuDatabase():
 class QueryDatabase():
     def __init__(self, filename, use_count_vectorizer = False, use_glove=False):
         self.word2vec = self.load_vectors(use_glove)
+        self.embedding_length = len(self.word2vec.values()[0])
         self.vectorizer = TfidfVectorizer()
         if (use_count_vectorizer):
             self.vectorizer.fit(self.corpus_text_generator(filename))
@@ -118,6 +119,7 @@ class QueryDatabase():
         return word2vec
 
 
+
     def load_id_to_query(self, filename, use_count_vectorizer):
         """
         Loads the id_to_query into the query dictionary
@@ -131,7 +133,7 @@ class QueryDatabase():
                 title = row[1]
                 body = row[2]
                 if not use_count_vectorizer:
-                    self.id_to_query[id] = Word2VecQuery(title, body, self.word2vec)
+                    self.id_to_query[id] = Word2VecQuery(title, body, self.word2vec, self.embedding_length)
                 else:
                     self.id_to_query[id] = VectorizerQuery(title, body, self.vectorizer)
 
@@ -228,12 +230,12 @@ class Word2VecQuery(object):
     MAX_TITLE_LENGTH = 20
     # Same as above
     MAX_BODY_LENGTH= 100
-    TOKEN_VECTOR_SIZE = 200
 
-    def __init__(self, title, body, word2vec):
+    def __init__(self, title, body, word2vec, embedding_length):
         self.title_tokens = title.lower().split()
         self.body_tokens = body.lower().split()
         self.word2vec = word2vec
+        self.embedding_length = embedding_length
 
     def get_feature_vector(self, token_list, max_length):
         feature_vector = []
@@ -242,11 +244,11 @@ class Word2VecQuery(object):
             if token in self.word2vec:
                 feature_vector.append(self.word2vec[token].unsqueeze(0))
             else:
-                feature_vector.append(torch.zeros(Word2VecQuery.TOKEN_VECTOR_SIZE).unsqueeze(0))
+                feature_vector.append(torch.zeros(self.embedding_length).unsqueeze(0))
         # Padd the end with zeroes
         if len(token_list) < max_length:
             for i in range(len(token_list), max_length):
-                feature_vector.append(torch.zeros(Word2VecQuery.TOKEN_VECTOR_SIZE).unsqueeze(0))
+                feature_vector.append(torch.zeros(self.embedding_length).unsqueeze(0))
         return torch.cat(feature_vector)
 
     def get_title_feature_vector(self):
@@ -272,7 +274,8 @@ class VectorizerQuery(object):
 
 
 if __name__=="__main__":
-    database = AndroidDatabase(use_count_vectorizer=True, use_glove=True)
+    database = AndroidDatabase(use_glove=True)
     testing_set  = database.get_testing_dataset()
-    for batch in testing_set:
-        break
+    data_loader = data.DataLoader(testing_set, batch_size=10, shuffle=True, drop_last=True)
+    for batch in da:
+        print(batch)

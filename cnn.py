@@ -1,13 +1,13 @@
 import torch
+import database 
 from torch import nn
 from torch.autograd import Variable
-from database import UbuntuDabatase
 import torch.utils.data as data
 from tqdm import tqdm
 from scipy.spatial.distance import cosine
 from metrics import compute_metrics
 
-from nn_utils import train_epoch, test
+from nn_utils import train_epoch, test, test_auc
 
 TITLE_VEC = "title_vec"
 BODY_VEC = "body_vec"
@@ -45,8 +45,8 @@ class CNN(nn.Module):
         return output
 
     def evaluate(self, title, body):
-        title_vec = cnn(Variable(title.permute(0, 2, 1)))
-        body_vec = cnn(Variable(body.permute(0, 2, 1)))
+        title_vec = cnn(Variable(title.permute(0, 2, 1)).cuda())
+        body_vec = cnn(Variable(body.permute(0, 2, 1)).cuda())
         return (title_vec + body_vec) / 2
 
 
@@ -60,28 +60,30 @@ if __name__ == "__main__":
     print loss
     loss.backward()
     """
-    feature_vector_dimensions = 200
+    feature_vector_dimensions = 300
     questions_vector_dimensions = 100
     kernel_size = 3
 
     learning_rate = 1e-3
-    weight_decay = 1e-5
+    weight_decay = 1e-3
     n_epochs = 20
     batch_size = 16
 
-    cnn = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size)
+    cnn = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size).cuda()
 
-    database = UbuntuDabatase()
-    training_dataset = database.get_training_dataset()
-    validation_dataset = database.get_validation_dataset()
-    test_dataset = database.get_testing_dataset()
+    ubuntu_database = database.UbuntuDatabase(use_glove=True)
+    android_database = database.AndroidDatabase(use_glove=True)
+
+    training_dataset = ubuntu_database.get_training_dataset()
+    validation_dataset = android_database.get_validation_dataset()
+    test_dataset = android_database.get_testing_dataset()
 
     optimizer = torch.optim.Adam(cnn.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
     for epoch in xrange(n_epochs):
         train_epoch(cnn, training_dataset, optimizer, batch_size)
-        test(cnn, validation_dataset)
+        test_auc(cnn, validation_dataset)
 
-    test(cnn, test_dataset)
+    test_auc(cnn, test_dataset)
 
 
