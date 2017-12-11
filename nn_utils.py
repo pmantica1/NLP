@@ -29,9 +29,9 @@ ID2_BODY_VEC = "id_2_body_vec"
 SIMILARITY = "similarity"
 
 
-class Loss(nn.Module):
+class EncoderLoss(nn.Module):
     def __init__(self):
-        super(Loss, self).__init__()
+        super(EncoderLoss, self).__init__()
         self.cosine_similarity = nn.CosineSimilarity(dim=1)
 
     def forward(self, question_batch, similar_question_batch, negative_questions_batch):
@@ -45,6 +45,33 @@ class Loss(nn.Module):
         return batch_losses.mean()
 
 
+class DomainLoss(nn.Module):
+    def __init__(self):
+        super(DomainLoss, self).__init__()
+        self.bce_loss = nn.BCELoss()
+
+    def forward(self, ubuntu_probabilities_batch, android_probabilities_batch):
+
+        flat_ubuntu_probabilities = flatten_tensor(ubuntu_probabilities_batch)
+        flat_android_probabilities = flatten_tensor(android_probabilities_batch)
+
+        label_probabilities = torch.cat([flat_ubuntu_probabilities, flat_android_probabilities])
+        label_targets = Variable(torch.cat([torch.zeros(len(flat_ubuntu_probabilities)),  torch.ones(len(flat_android_probabilities))]))
+
+        return self.bce_loss(label_probabilities, label_targets)
+
+
+class AdversarialLoss(nn.Module):
+    def __init__(self, lamb):
+        super(AdversarialLoss, self).__init__()
+        self.encoder_loss = EncoderLoss()
+        self.domain_loss = DomainLoss()
+        self.lamb = lamb
+
+    def forward(self, question_batch, similar_question_batch, negative_questions_batch, label_probabilities, label_targets):
+        return self.encoder_loss(question_batch, similar_question_batch, negative_questions_batch) - self.lamb * self.domain_loss(label_probabilities, label_targets)
+
+
 def train_epoch(nn_model, dataset, optimizer, batch_size):
     data_loader = data.DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
     for batch in tqdm(data_loader):
@@ -52,7 +79,7 @@ def train_epoch(nn_model, dataset, optimizer, batch_size):
 
 
 def train_step(nn_model, batch, optimizer):
-    loss_fn = Loss()
+    loss_fn = EncoderLoss()
 
     questions_title_batch = batch[TITLE_VEC]
     questions_body_batch = batch[BODY_VEC]
@@ -126,13 +153,19 @@ def test_auc_step(nn_model, batch):
     title2 = batch[ID2_TITLE_VEC]
     body2 = batch[ID2_BODY_VEC]
 
+    print nn_model.evaluate(title1, body1).data.numpy().shape
+
     question1_vec = nn_model.evaluate(title1, body1).data.numpy()[:, :, 0]
     question2_vec = nn_model.evaluate(title2, body2).data.numpy()[:, :, 0]
 
 
     assert question1_vec.shape == question2_vec.shape
 
+    print question1_vec.shape
+
     scores = 1 - cosine(question1_vec, question2_vec)
+
+    print scores.shape
 
     similarities = batch[SIMILARITY].numpy().flatten()
 
@@ -144,3 +177,6 @@ def evaluate_multi_questions(nn_model, titles, bodies):
         raise RuntimeError("titles and bodies have different batch size")
     vectors = [nn_model.evaluate(titles[:,i], bodies[:,i]) for i in xrange(len(titles[0]))]
     return torch.cat(vectors, 2)
+
+def flatten_tensor(tensor):
+    return tensor.view(tensor.numel())
