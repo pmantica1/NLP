@@ -40,11 +40,11 @@ def train_step(encoder, classifier, batch, optimizer_encoder, optimizer_domain, 
     negative_questions_title_batch = batch[RAND_TITLE_VECS]
     negative_questions_body_batch = batch[RAND_BODY_VECS]
 
-    ubuntu_rand_questions_title_batch = batch[UBUNTU_RAND_TITLE_VECS]
-    ubuntu_rand_questions_body_batch = batch[UBUNTU_RAND_TITLE_VECS]
+    ubuntu_rand_questions_title_batch = batch[UBUNTU_RAND_TITLE_VECS].unsqueeze(1)
+    ubuntu_rand_questions_body_batch = batch[UBUNTU_RAND_BODY_VECS].unsqueeze(1)
 
-    android_rand_questions_title_batch = batch[ANDROID_RAND_TITLE_VECS]
-    android_rand_questions_body_batch = batch[ANDROID_RAND_TITLE_VECS]
+    android_rand_questions_title_batch = batch[ANDROID_RAND_TITLE_VECS].unsqueeze(1)
+    android_rand_questions_body_batch = batch[ANDROID_RAND_BODY_VECS].unsqueeze(1)
 
     #initialize gradients of optimizers
     optimizer_encoder.zero_grad()
@@ -64,14 +64,13 @@ def train_step(encoder, classifier, batch, optimizer_encoder, optimizer_domain, 
 
     #get loss
     loss = loss_fn(questions_batch, similar_questions_batch, negative_questions_batch, ubuntu_labels_probabilities, android_labels_probabilities)
-
     #optimize params
     loss.backward()
     optimizer_encoder.step()
     optimizer_domain.step()
 
 if __name__ == "__main__":
-    feature_vector_dimensions = 200
+    feature_vector_dimensions = 300
     questions_vector_dimensions = 100
     kernel_size = 3
 
@@ -79,14 +78,14 @@ if __name__ == "__main__":
 
     classifier_hidden_size = 100
     num_labels = 2
-    classifier = FFNN(feature_vector_dimensions, classifier_hidden_size, num_labels)
+    classifier = FFNN(questions_vector_dimensions, classifier_hidden_size, num_labels)
 
     learning_rate = 1e-3
-    weight_decay = 1e-3
+    weight_decay = 1e-5
     n_epochs = 20
     batch_size = 16
 
-    lamb = 1e-7
+    lamb = 1e-5
 
     database = TransferLearningDatabase()
 
