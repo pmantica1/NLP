@@ -8,9 +8,26 @@ from tqdm import tqdm
 from sklearn.feature_extraction.text import TfidfVectorizer
 from random import shuffle
 
+class TransferLearningDatabase():
+    def __init__(self):
+        self.ubuntu_database = UbuntuDatabase(use_glove=True, load_testing_data=False)
+        self.android_database = AndroidDatabase(word2vec=ubuntu_database.word2vec)
+        self.android_queries = list(AndroidDatabase.queryDatabase.id_to_query.values())
+        self.ubuntu_queries = list(UbuntuDatabase.queryDatabase.id_to_query.values())
+
+    def get_training_set():
+        return datasets.TransferLearningDataset(self.ubuntu_database.get_training_set(), self.android_queries, self.ubuntu_queries)
+
+    def get_validation_set():
+        return self.android_database.get_validation_set()
+
+    def get_testing_set():
+        return self.android_database.get_testing_set()
+
+
 class AndroidDatabase():
-    def __init__(self, use_count_vectorizer=False, use_glove=False):
-        self.queryDatabase = QueryDatabase("android_data/corpus.txt", use_count_vectorizer, use_glove)
+    def __init__(self, use_count_vectorizer=False, use_glove=False, word2vec=None):
+        self.queryDatabase = QueryDatabase("android_data/corpus.txt", use_count_vectorizer, use_glove, word2vec=None)
         self.validation_pos = self.load_data_pairs("android_data/dev.pos.txt")
         self.validation_neg = self.load_data_pairs("android_data/dev.neg.txt")
         self.test_pos = self.load_data_pairs("android_data/test.pos.txt")
@@ -41,11 +58,12 @@ class AndroidDatabase():
 
 
 class UbuntuDatabase():
-    def __init__(self, use_glove=False):
+    def __init__(self, use_glove=False, load_testing_data=True):
         self.queryDatabase = QueryDatabase("data/texts_raw_fixed.txt", False, use_glove)
         self.query_sets = self.load_query_sets()
-        self.validation_sets = self.load_testing_sets("data/dev.txt")
-        self.testing_sets = self.load_testing_sets("data/test.txt")
+        if load_testing_data:
+            self.validation_sets = self.load_testing_sets("data/dev.txt")
+            self.testing_sets = self.load_testing_sets("data/test.txt")
 
     def get_training_dataset(self):
         return datasets.UbuntuTrainingDataset(self.query_sets)
@@ -94,8 +112,8 @@ class UbuntuDatabase():
 
 
 class QueryDatabase():
-    def __init__(self, filename, use_count_vectorizer = False, use_glove=False):
-        self.word2vec = self.load_vectors(use_glove)
+    def __init__(self, filename, use_count_vectorizer = False, use_glove=False, word2vec=None):
+        self.word2vec = (word2vec if word2vec else self.load_vectors(use_glove))
         self.embedding_length = len(self.word2vec.values()[0])
         self.vectorizer = TfidfVectorizer()
         if (use_count_vectorizer):

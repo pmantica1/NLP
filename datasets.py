@@ -1,4 +1,31 @@
 import torch.utils.data as data
+import np 
+
+class TransferLearningDataset(data.Dataset):
+    # Precondition is that the android queries and ubuntu queries are randomly ordered 
+    def __init__(self, ubuntu_dataset, android_queries, ubuntu_queries):
+        self.ubuntu_dataset = ubuntu_dataset
+        self.android_queries = android_queries
+        self.ubuntu_queries = ubuntu_queries
+
+    def __len__(self):
+        return len(self.ubuntu_dataset)
+
+    def __getitem__(self, item):
+        if item > len(self):
+            raise AttributeError("index out of bounds")
+        random_ubuntu_title_vec, random_ubuntu_body_vec = ubuntu_queries[item%len(ubuntu_queries)]
+        random_android_title_vec, random_android_body_vec = android_queries[item%len(android_queries)]
+        result = ubuntu_dataset[item]
+        result["ubuntu_title_vec"] = random_ubuntu_title_vec
+        result["ubuntu_body_vec"] = random_ubuntu_body_vec
+        result["android_title_vec"] = random_android_title_vec
+        result["android_body_vec"] = random_android_body_vec 
+        return result 
+
+
+
+
 
 class AndroidTestingDataset(data.Dataset):
     def __init__(self, query_pairs):

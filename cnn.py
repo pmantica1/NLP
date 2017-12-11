@@ -61,11 +61,11 @@ if __name__ == "__main__":
     loss.backward()
     """
     feature_vector_dimensions = 300
-    questions_vector_dimensions = 100
+    questions_vector_dimensions = 200
     kernel_size = 3
 
     learning_rate = 1e-3
-    weight_decay = 1e-3
+    weight_decay = 1e-5
     n_epochs = 20
     batch_size = 16
 
