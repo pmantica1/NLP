@@ -40,7 +40,7 @@ class EncoderLoss(nn.Module):
         scores = self.cosine_similarity(expanded_question_batch, other_questions_batch)
         margin = 0.5 * torch.ones(scores.data.shape)
         margin[:, 0] = 0
-        margin = Variable(margin)
+        margin = Variable(margin).cuda()
         batch_losses = (margin + scores - scores[:, 0].unsqueeze(1).expand(scores.data.shape)).max(1)[0]
         return batch_losses.mean()
 
@@ -153,21 +153,16 @@ def test_auc_step(nn_model, batch):
     title2 = batch[ID2_TITLE_VEC]
     body2 = batch[ID2_BODY_VEC]
 
-    print nn_model.evaluate(title1, body1).data.numpy().shape
-
-    question1_vec = nn_model.evaluate(title1, body1).data.numpy()[:, :, 0]
-    question2_vec = nn_model.evaluate(title2, body2).data.numpy()[:, :, 0]
-
-
+    question1_vec = nn_model.evaluate(title1, body1).data.cpu().numpy()[:, :, 0]
+    question2_vec = nn_model.evaluate(title2, body2).data.cpu().numpy()[:, :, 0]
+    
     assert question1_vec.shape == question2_vec.shape
 
     print question1_vec.shape
 
     scores = 1 - cosine(question1_vec, question2_vec)
 
-    print scores.shape
-
-    similarities = batch[SIMILARITY].numpy().flatten()
+    similarities = batch[SIMILARITY].cpu().numpy().flatten()
 
     return torch.FloatTensor(scores), torch.LongTensor(similarities)
 
