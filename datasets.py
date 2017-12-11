@@ -13,13 +13,13 @@ class TransferLearningDataset(data.Dataset):
     def __getitem__(self, item):
         if item > len(self):
             raise AttributeError("index out of bounds")
-        random_ubuntu_title_vec, random_ubuntu_body_vec = self.ubuntu_queries[item%len(self.ubuntu_queries)]
-        random_android_title_vec, random_android_body_vec = self.android_queries[item%len(self.android_queries)]
+        random_ubuntu_title_vec, random_ubuntu_body_vec = self.ubuntu_queries[item%len(self.ubuntu_queries)].get_query_vector()
+        random_android_title_vec, random_android_body_vec = self.android_queries[item%len(self.android_queries)].get_query_vector()
         result = self.ubuntu_dataset[item]
-        result["ubuntu_title_vec"] = random_ubuntu_title_vec
-        result["ubuntu_body_vec"] = random_ubuntu_body_vec
-        result["android_title_vec"] = random_android_title_vec
-        result["android_body_vec"] = random_android_body_vec 
+        result["ubuntu_rand_title_vec"] = random_ubuntu_title_vec
+        result["ubuntu_rand_body_vec"] = random_ubuntu_body_vec
+        result["android_rand_title_vec"] = random_android_title_vec
+        result["android_rand_body_vec"] = random_android_body_vec
         return result 
 
 

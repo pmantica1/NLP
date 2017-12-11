@@ -12,8 +12,10 @@ class TransferLearningDatabase():
     def __init__(self):
         self.ubuntu_database = UbuntuDatabase(use_glove=True, load_testing_data=False)
         self.android_database = AndroidDatabase(word2vec=self.ubuntu_database.queryDatabase.word2vec)
-        self.android_queries = list(self.android_database.queryDatabase.id_to_query.values())
-        self.ubuntu_queries = list(self.ubuntu_database.queryDatabase.id_to_query.values())
+        self.android_queries = [query for query in self.android_database.queryDatabase.id_to_query.values()]
+        self.ubuntu_queries =  [query for query in self.ubuntu_database.queryDatabase.id_to_query.values()]
+        for query in self.ubuntu_queries:
+            print(query)
 
     def get_training_set(self):
         return datasets.TransferLearningDataset(self.ubuntu_database.get_training_dataset(), self.android_queries, self.ubuntu_queries)
@@ -23,7 +25,6 @@ class TransferLearningDatabase():
 
     def get_testing_set(self):
         return self.android_database.get_testing_dataset()
-
 
 class AndroidDatabase():
     def __init__(self, use_count_vectorizer=False, use_glove=False, word2vec=None):
@@ -275,6 +276,10 @@ class Word2VecQuery(object):
     def get_body_feature_vector(self):
         return self.get_feature_vector(self.body_tokens, Word2VecQuery.MAX_BODY_LENGTH)
 
+    def get_query_vector(self):
+        return (self.get_title_feature_vector(), self.get_body_feature_vector())
+
+
 class VectorizerQuery(object):
     def __init__(self, title, body, vectorizer):
         self.title = title
@@ -290,10 +295,14 @@ class VectorizerQuery(object):
     def get_body_feature_vector(self):
         return self.get_feature_vector(self.body)
 
+    def get_query_vector(self):
+        return (self.get_title_feature_vector(), self.get_body_feature_vector())
+
+
 
 if __name__=="__main__":
     database = TransferLearningDatabase()
-    testing_set  = database.get_training_set()
-    data_loader = data.DataLoader(testing_set, batch_size=10, shuffle=True, drop_last=True)
+    validation_set  = database.get_validation_set()
+    data_loader = data.DataLoader(validation_set, batch_size=10, shuffle=True, drop_last=True)
     for batch in data_loader:
         print(batch)
