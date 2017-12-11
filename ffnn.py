@@ -8,7 +8,7 @@ class FFNN(nn.Module):
         super(FFNN, self).__init__()
         self.input_to_hidden = nn.Linear(input_size, hidden_size)
         self.hidden_to_output = nn.Linear(hidden_size, output_size)
-        self.tanh = nn.Tanh()
+        self.relu = nn.ReLU()
         self.softmax = nn.Softmax()
 
     def forward(self, inp):
@@ -18,7 +18,7 @@ class FFNN(nn.Module):
         :return: 2-dimensional FloatTensor of shape (batch_size x num_labels) containing probabilities of belonging to each label
         """
         hidden = self.input_to_hidden(inp)
-        hidden = self.tanh(hidden)
+        hidden = self.relu(hidden)
         output = self.hidden_to_output(hidden)
         output = self.softmax(output)
         return output

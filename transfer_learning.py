@@ -40,11 +40,11 @@ def train_step(encoder, classifier, batch, optimizer_encoder, optimizer_domain, 
     negative_questions_title_batch = batch[RAND_TITLE_VECS]
     negative_questions_body_batch = batch[RAND_BODY_VECS]
 
-    ubuntu_rand_questions_title_batch = batch[UBUNTU_RAND_TITLE_VECS].unsqueeze(1)
-    ubuntu_rand_questions_body_batch = batch[UBUNTU_RAND_BODY_VECS].unsqueeze(1)
+    ubuntu_rand_questions_title_batch = batch[UBUNTU_RAND_TITLE_VECS]
+    ubuntu_rand_questions_body_batch = batch[UBUNTU_RAND_BODY_VECS]
 
-    android_rand_questions_title_batch = batch[ANDROID_RAND_TITLE_VECS].unsqueeze(1)
-    android_rand_questions_body_batch = batch[ANDROID_RAND_BODY_VECS].unsqueeze(1)
+    android_rand_questions_title_batch = batch[ANDROID_RAND_TITLE_VECS]
+    android_rand_questions_body_batch = batch[ANDROID_RAND_BODY_VECS]
 
     #initialize gradients of optimizers
     optimizer_encoder.zero_grad()
@@ -59,8 +59,8 @@ def train_step(encoder, classifier, batch, optimizer_encoder, optimizer_domain, 
     android_questions_batch = evaluate_multi_questions(encoder, android_rand_questions_title_batch, android_rand_questions_body_batch)
 
     #evaluate classifier
-    ubuntu_labels_probabilities = classifier(ubuntu_questions_batch[:, :, 0])
-    android_labels_probabilities = classifier(android_questions_batch[:, :, 0])
+    ubuntu_labels_probabilities = torch.cat([classifier(ubuntu_questions_batch[:,:,i]) for i in xrange(ubuntu_questions_batch.data.shape[2])])
+    android_labels_probabilities = torch.cat([classifier(ubuntu_questions_batch[:,:,i]) for i in xrange(android_questions_batch.data.shape[2])])
 
     #get loss
     loss = loss_fn(questions_batch, similar_questions_batch, negative_questions_batch, ubuntu_labels_probabilities, android_labels_probabilities)

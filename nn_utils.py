@@ -48,17 +48,12 @@ class EncoderLoss(nn.Module):
 class DomainLoss(nn.Module):
     def __init__(self):
         super(DomainLoss, self).__init__()
-        self.bce_loss = nn.BCELoss()
 
     def forward(self, ubuntu_probabilities_batch, android_probabilities_batch):
+        label_probabilities = torch.cat([ubuntu_probabilities_batch, android_probabilities_batch])
+        label_targets = Variable(torch.cat([torch.zeros(len(ubuntu_probabilities_batch)),  torch.ones(len(android_probabilities_batch))]).long()).cuda()
 
-        flat_ubuntu_probabilities = flatten_tensor(ubuntu_probabilities_batch)
-        flat_android_probabilities = flatten_tensor(android_probabilities_batch)
-
-        label_probabilities = torch.cat([flat_ubuntu_probabilities, flat_android_probabilities])
-        label_targets = Variable(torch.cat([torch.zeros(len(flat_ubuntu_probabilities)),  torch.ones(len(flat_android_probabilities))]))
-
-        return self.bce_loss(label_probabilities, label_targets)
+        return nn.functional.cross_entropy(label_probabilities, label_targets)
 
 
 class AdversarialLoss(nn.Module):
@@ -155,10 +150,8 @@ def test_auc_step(nn_model, batch):
 
     question1_vec = nn_model.evaluate(title1, body1).data.cpu().numpy()[:, :, 0]
     question2_vec = nn_model.evaluate(title2, body2).data.cpu().numpy()[:, :, 0]
-    
-    assert question1_vec.shape == question2_vec.shape
 
-    print question1_vec.shape
+    assert question1_vec.shape == question2_vec.shape
 
     scores = 1 - cosine(question1_vec, question2_vec)
 
@@ -172,6 +165,3 @@ def evaluate_multi_questions(nn_model, titles, bodies):
         raise RuntimeError("titles and bodies have different batch size")
     vectors = [nn_model.evaluate(titles[:,i], bodies[:,i]) for i in xrange(len(titles[0]))]
     return torch.cat(vectors, 2)
-
-def flatten_tensor(tensor):
-    return tensor.view(tensor.numel())
