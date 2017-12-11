@@ -5,7 +5,7 @@ from nn_utils import AdversarialLoss, evaluate_multi_questions
 from cnn import CNN
 from ffnn import FFNN
 from nn_utils import test_auc
-from database import UbuntuDatabase, AndroidDatabase
+from database import TransferLearningDatabase
 
 
 
@@ -85,17 +85,17 @@ if __name__ == "__main__":
     weight_decay = 1e-3
     n_epochs = 20
     batch_size = 16
+
     lamb = 1e-7
 
-    ubuntu_database = UbuntuDatabase()
-    android_database = AndroidDatabase()
+    database = TransferLearningDatabase()
 
-    training_dataset = ubuntu_database.get_training_dataset()
-    validation_dataset = android_database.get_validation_dataset()
-    test_dataset = android_database.get_testing_dataset()
+    training_dataset = database.get_training_set()
+    validation_dataset = database.get_validation_set()
+    test_dataset = database.get_testing_set()
 
     optimizer_encoder = torch.optim.Adam(encoder.parameters(), lr=learning_rate, weight_decay=weight_decay)
-    optimizer_domain = torch.optim.Adam(encoder.parameters(), lr=-learning_rate, weight_decay=weight_decay)
+    optimizer_domain = torch.optim.Adam(classifier.parameters(), lr=-learning_rate, weight_decay=weight_decay)
 
     for epoch in xrange(n_epochs):
         train_epoch(encoder, classifier, training_dataset, optimizer_encoder, optimizer_domain, batch_size, lamb)
