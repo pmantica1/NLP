@@ -15,10 +15,10 @@ SIM_TITLE_VEC = "sim_title_vec"
 SIM_BODY_VEC = 'sim_body_vec'
 RAND_TITLE_VECS = "rand_title_vecs"
 RAND_BODY_VECS = "rand_body_vecs"
-UBUNTU_RAND_TITLE_VECS = "ubuntu_rand_title_vec"
-UBUNTU_RAND_BODY_VECS = "ubuntu_rand_body_vec"
-ANDROID_RAND_TITLE_VECS = "android_rand_title_vec"
-ANDROID_RAND_BODY_VECS = "android_rand_body_vec"
+UBUNTU_RAND_TITLE_VECS = "ubuntu_rand_title_vecs"
+UBUNTU_RAND_BODY_VECS = "ubuntu_rand_body_vecs"
+ANDROID_RAND_TITLE_VECS = "android_rand_title_vecs"
+ANDROID_RAND_BODY_VECS = "android_rand_body_vecs"
 
 
 def train_epoch(encoder, classifier, dataset, optimizer_encoder, optimizer_domain, batch_size, lamb):
