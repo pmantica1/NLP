@@ -11,18 +11,18 @@ from random import shuffle
 class TransferLearningDatabase():
     def __init__(self):
         self.ubuntu_database = UbuntuDatabase(use_glove=True, load_testing_data=False)
-        self.android_database = AndroidDatabase(word2vec=ubuntu_database.word2vec)
-        self.android_queries = list(AndroidDatabase.queryDatabase.id_to_query.values())
-        self.ubuntu_queries = list(UbuntuDatabase.queryDatabase.id_to_query.values())
+        self.android_database = AndroidDatabase(word2vec=self.ubuntu_database.queryDatabase.word2vec)
+        self.android_queries = list(self.android_database.queryDatabase.id_to_query.values())
+        self.ubuntu_queries = list(self.ubuntu_database.queryDatabase.id_to_query.values())
 
-    def get_training_set():
-        return datasets.TransferLearningDataset(self.ubuntu_database.get_training_set(), self.android_queries, self.ubuntu_queries)
+    def get_training_set(self):
+        return datasets.TransferLearningDataset(self.ubuntu_database.get_training_dataset(), self.android_queries, self.ubuntu_queries)
 
-    def get_validation_set():
-        return self.android_database.get_validation_set()
+    def get_validation_set(self):
+        return self.android_database.get_validation_dataset()
 
-    def get_testing_set():
-        return self.android_database.get_testing_set()
+    def get_testing_set(self):
+        return self.android_database.get_testing_dataset()
 
 
 class AndroidDatabase():
@@ -292,8 +292,8 @@ class VectorizerQuery(object):
 
 
 if __name__=="__main__":
-    database = AndroidDatabase(use_glove=True)
-    testing_set  = database.get_testing_dataset()
+    database = TransferLearningDatabase()
+    testing_set  = database.get_training_set()
     data_loader = data.DataLoader(testing_set, batch_size=10, shuffle=True, drop_last=True)
-    for batch in da:
+    for batch in data_loader:
         print(batch)
