@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from torch.autograd import Variable
-from database import QueryDatabase
+from database import UbuntuDabatase
 import torch.utils.data as data
 from tqdm import tqdm
 from scipy.spatial.distance import cosine
@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
     cnn = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size)
 
-    database = QueryDatabase()
+    database = UbuntuDabatase()
     training_dataset = database.get_training_dataset()
     validation_dataset = database.get_validation_dataset()
     test_dataset = database.get_testing_dataset()

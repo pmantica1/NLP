@@ -1,8 +1,27 @@
 import torch.utils.data as data
 
-class TrainingDataset(data.Dataset):
-    def __init__(self, id_to_query, query_sets):
-        self.id_to_query = id_to_query
+class AndroidTestingDataset(data.Dataset):
+    def __init__(self, query_pairs):
+        self.query_pairs = query_pairs
+
+    def __len__(self):
+        return len(self.query_pairs)
+
+    def __getitem__(self, item):
+        if item > len(self):
+            raise AttributeError("index out of bounds")
+        id_1_title_vector, id_1_body_vector = self.query_pairs[item].get_query_vector_1()
+        id_2_title_vector, id_2_body_vector = self.query_pairs[item].get_query_vector_2()
+        similarity = self.query_pairs[item].get_similarity()
+
+
+        return {"id_1_title_vec": id_1_title_vector, "id_1_body_vec": id_1_body_vector, \
+                "id_2_title_vec": id_2_title_vector, "id_2_body_vec": id_2_body_vector, "similarity": similarity}
+
+
+
+class UbuntuTrainingDataset(data.Dataset):
+    def __init__(self, query_sets):
         self.query_sets = query_sets
 
     def __len__(self):
@@ -19,9 +38,8 @@ class TrainingDataset(data.Dataset):
         'sim_body_vec':sim_body_vector, "rand_title_vecs": random_title_vectors, "rand_body_vecs": random_body_vectors}
 
 
-class TestingDataset(data.Dataset):
-    def __init__(self, id_to_query, testing_sets):
-        self.id_to_query = id_to_query
+class UbuntuTestingDataset(data.Dataset):
+    def __init__(self, testing_sets):
         self.testing_sets = testing_sets
 
     def __len__(self):
