@@ -3,6 +3,7 @@ import torch
 from tqdm import tqdm
 from nn_utils import AdversarialLoss, evaluate_multi_questions
 from cnn import CNN
+from lstm import LSTM
 from ffnn import FFNN
 from nn_utils import test_auc
 from database import TransferLearningDatabase
@@ -71,21 +72,22 @@ def train_step(encoder, classifier, batch, optimizer_encoder, optimizer_domain, 
 
 if __name__ == "__main__":
     feature_vector_dimensions = 300
-    questions_vector_dimensions = 100
+    questions_vector_dimensions = 500
     kernel_size = 3
 
-    encoder = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size)
-
-    classifier_hidden_size = 100
+    classifier_hidden_size_1 = 300
+    classifier_hidden_size_2 = 150
     num_labels = 2
-    classifier = FFNN(questions_vector_dimensions, classifier_hidden_size, num_labels)
 
     learning_rate = 1e-3
     weight_decay = 1e-5
     n_epochs = 20
     batch_size = 16
 
-    lamb = 1e-5
+    encoder = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size).cuda()
+    classifier = FFNN(questions_vector_dimensions, classifier_hidden_size_1, classifier_hidden_size_2, num_labels).cuda()
+
+    lamb = 1e-3
 
     database = TransferLearningDatabase()
 

@@ -4,22 +4,24 @@ from torch.autograd import Variable
 from nn_utils import DomainLoss
 
 class FFNN(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
+    def __init__(self, input_size, hidden_size_1, hidden_size_2, output_size):
         super(FFNN, self).__init__()
-        self.input_to_hidden = nn.Linear(input_size, hidden_size)
-        self.hidden_to_output = nn.Linear(hidden_size, output_size)
+        self.input_to_hidden1 = nn.Linear(input_size, hidden_size_1)
+        self.hidden1_to_hidden2 = nn.Linear(hidden_size_1, hidden_size_2)
+        self.hidden_to_output = nn.Linear(hidden_size_2, output_size)
         self.relu = nn.ReLU()
         self.softmax = nn.Softmax()
 
     def forward(self, inp):
         """
-
         :param inp: 2-dimensional FloatTensor of shape (batch_size x feature_dimensions)
         :return: 2-dimensional FloatTensor of shape (batch_size x num_labels) containing probabilities of belonging to each label
         """
-        hidden = self.input_to_hidden(inp)
-        hidden = self.relu(hidden)
-        output = self.hidden_to_output(hidden)
+        hidden1 = self.input_to_hidden1(inp)
+        hidden1 = self.relu(hidden1)
+        hidden2 = self.hidden1_to_hidden2(hidden1)
+        hidden2 = self.relu(hidden2)
+        output = self.hidden_to_output(hidden2)
         output = self.softmax(output)
         return output
 
