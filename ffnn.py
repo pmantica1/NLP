@@ -2,6 +2,7 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 from nn_utils import DomainLoss
+import numpy as np
 
 class FFNN(nn.Module):
     def __init__(self, input_size, hidden_size_1, hidden_size_2, output_size):

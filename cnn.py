@@ -61,29 +61,42 @@ if __name__ == "__main__":
     loss.backward()
     """
     feature_vector_dimensions = 300
-    questions_vector_dimensions = 200
+    questions_vector_dimensions_list = [200, 300, 500]
     kernel_size = 3
 
-    learning_rate = 1e-3
-    weight_decay = 1e-5
-    n_epochs = 20
+    learning_rate_list = [1e-4, 1e-5, 1e-6]
+    weight_decay_list = [1e-3, 1e-4] 
+    n_epochs = 5
     batch_size = 16
 
-    cnn = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size).cuda()
+    best_auc = 0 
+    best_param = [0, 0, 0]
+    for questions_vector_dimensions in questions_vector_dimensions_list:
+        for learning_rate in learning_rate_list:
+            for weight_decay in weight_decay_list:
+                cnn = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size).cuda()
+            
 
-    ubuntu_database = database.UbuntuDatabase(use_glove=True)
-    android_database = database.AndroidDatabase(use_glove=True)
+                ubuntu_database = database.UbuntuDatabase(use_glove=True)
+                android_database = database.AndroidDatabase(use_glove=True)
 
-    training_dataset = ubuntu_database.get_training_dataset()
-    validation_dataset = android_database.get_validation_dataset()
-    test_dataset = android_database.get_testing_dataset()
+                training_dataset = ubuntu_database.get_training_dataset()
+                validation_dataset = android_database.get_validation_dataset()
+                test_dataset = android_database.get_testing_dataset()
 
-    optimizer = torch.optim.Adam(cnn.parameters(), lr=learning_rate, weight_decay=weight_decay)
+                optimizer = torch.optim.Adam(cnn.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
-    for epoch in xrange(n_epochs):
-        train_epoch(cnn, training_dataset, optimizer, batch_size)
-        test_auc(cnn, validation_dataset)
+                for epoch in xrange(n_epochs):
+                    train_epoch(cnn, training_dataset, optimizer, batch_size)
+                score = test_auc(cnn, validation_dataset)
+                if score > best_auc:
+                    best_auc = score 
+                    best_param = [questions_vector_dimensions, learning_rate, weight_decay]
+                
+            
+        
+    print(best_auc)
+    print(best_param)
 
-    test_auc(cnn, test_dataset)
 
 

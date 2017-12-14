@@ -3,8 +3,8 @@ import torch
 from tqdm import tqdm
 from nn_utils import AdversarialLoss, evaluate_multi_questions
 from cnn import CNN
-from lstm import LSTM
 from ffnn import FFNN
+from lstm import LSTM
 from nn_utils import test_auc
 from database import TransferLearningDatabase
 
@@ -61,7 +61,7 @@ def train_step(encoder, classifier, batch, optimizer_encoder, optimizer_domain, 
 
     #evaluate classifier
     ubuntu_labels_probabilities = torch.cat([classifier(ubuntu_questions_batch[:,:,i]) for i in xrange(ubuntu_questions_batch.data.shape[2])])
-    android_labels_probabilities = torch.cat([classifier(ubuntu_questions_batch[:,:,i]) for i in xrange(android_questions_batch.data.shape[2])])
+    android_labels_probabilities = torch.cat([classifier(ubuntu_questions_batch[:,:,i])for i in xrange(android_questions_batch.data.shape[2])])
 
     #get loss
     loss = loss_fn(questions_batch, similar_questions_batch, negative_questions_batch, ubuntu_labels_probabilities, android_labels_probabilities)
@@ -79,8 +79,8 @@ if __name__ == "__main__":
     classifier_hidden_size_2 = 150
     num_labels = 2
 
-    learning_rate = 1e-3
-    weight_decay = 1e-5
+    learning_rate = 1e-4
+    weight_decay = 1e-3
     n_epochs = 20
     batch_size = 16
 
@@ -100,6 +100,6 @@ if __name__ == "__main__":
 
     for epoch in xrange(n_epochs):
         train_epoch(encoder, classifier, training_dataset, optimizer_encoder, optimizer_domain, batch_size, lamb)
-        test_auc(encoder, validation_dataset)
+        print test_auc(encoder, validation_dataset)
 
-    test_auc(encoder, test_dataset)
+    print test_auc(encoder, test_dataset)

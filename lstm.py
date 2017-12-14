@@ -2,7 +2,6 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 
-from database import UbuntuDabatase
 from nn_utils import train_epoch, test
 
 from tqdm import tqdm
@@ -15,7 +14,7 @@ class LSTM(nn.Module):
         self.hidden_size = hidden_size
         self.batch_size = batch_size
 
-        self.rnn = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=1, bidirectional=True)
+        self.rnn = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=1, bidirectional=False)
 
     def forward(self, feature_vectors, hidden, state):
         """
@@ -34,14 +33,14 @@ class LSTM(nn.Module):
         return output, new_hidden, new_state
 
     def init_hidden(self, batch_size):
-        return Variable(torch.zeros(2, batch_size, self.hidden_size))
+        return Variable(torch.zeros(1, batch_size, self.hidden_size)).cuda()
 
     def init_state(self, batch_size):
-        return Variable(torch.zeros(2, batch_size, self.hidden_size))
+        return Variable(torch.zeros(1, batch_size, self.hidden_size)).cuda()
 
     def evaluate(self, title, body):
-        title_inp = Variable(title.permute(1, 0, 2))
-        body_inp = Variable(body.permute(1, 0, 2))
+        title_inp = Variable(title.permute(1, 0, 2)).cuda()
+        body_inp = Variable(body.permute(1, 0, 2)).cuda()
 
         batch_size = title_inp.data.shape[1]
 

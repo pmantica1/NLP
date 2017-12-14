@@ -38,7 +38,7 @@ class EncoderLoss(nn.Module):
         other_questions_batch = torch.cat([similar_question_batch, negative_questions_batch], 2)
         expanded_question_batch = question_batch.expand(other_questions_batch.data.shape)
         scores = self.cosine_similarity(expanded_question_batch, other_questions_batch)
-        margin = 0.5 * torch.ones(scores.data.shape)
+        margin = 0.2 * torch.ones(scores.data.shape)
         margin[:, 0] = 0
         margin = Variable(margin).cuda()
         batch_losses = (margin + scores - scores[:, 0].unsqueeze(1).expand(scores.data.shape)).max(1)[0]
@@ -54,7 +54,6 @@ class DomainLoss(nn.Module):
         label_targets = Variable(torch.cat([torch.zeros(len(ubuntu_probabilities_batch)),  torch.ones(len(android_probabilities_batch))]).long()).cuda()
 
         return nn.functional.cross_entropy(label_probabilities, label_targets)
-
 
 class AdversarialLoss(nn.Module):
     def __init__(self, lamb):
@@ -138,7 +137,7 @@ def test_auc(nn_model, dataset):
         score, similarity = test_auc_step(nn_model, batch)
         meter.add(score, similarity)
 
-    print meter.value(max_fpr=0.05)
+    return meter.value(max_fpr=0.05)
 
 
 def test_auc_step(nn_model, batch):
