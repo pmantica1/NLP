@@ -30,15 +30,16 @@ SIMILARITY = "similarity"
 
 
 class EncoderLoss(nn.Module):
-    def __init__(self):
+    def __init__(self, margin_size):
         super(EncoderLoss, self).__init__()
         self.cosine_similarity = nn.CosineSimilarity(dim=1)
+        self.margin_size = margin_size
 
     def forward(self, question_batch, similar_question_batch, negative_questions_batch):
         other_questions_batch = torch.cat([similar_question_batch, negative_questions_batch], 2)
         expanded_question_batch = question_batch.expand(other_questions_batch.data.shape)
         scores = self.cosine_similarity(expanded_question_batch, other_questions_batch)
-        margin = 0.2 * torch.ones(scores.data.shape)
+        margin = self.margin_size * torch.ones(scores.data.shape)
         margin[:, 0] = 0
         margin = Variable(margin).cuda()
         batch_losses = (margin + scores - scores[:, 0].unsqueeze(1).expand(scores.data.shape)).max(1)[0]
@@ -66,14 +67,14 @@ class AdversarialLoss(nn.Module):
         return self.encoder_loss(question_batch, similar_question_batch, negative_questions_batch) - self.lamb * self.domain_loss(label_probabilities, label_targets)
 
 
-def train_epoch(nn_model, dataset, optimizer, batch_size):
+def train_epoch(nn_model, dataset, optimizer, batch_size, margin_size=0.2):
     data_loader = data.DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
     for batch in tqdm(data_loader):
-        train_step(nn_model, batch, optimizer)
+        train_step(nn_model, batch, optimizer, margin_size)
 
 
-def train_step(nn_model, batch, optimizer):
-    loss_fn = EncoderLoss()
+def train_step(nn_model, batch, optimizer, margin_size):
+    loss_fn = EncoderLoss(margin_size)
 
     questions_title_batch = batch[TITLE_VEC]
     questions_body_batch = batch[BODY_VEC]

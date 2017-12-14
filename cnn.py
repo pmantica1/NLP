@@ -26,10 +26,11 @@ P5 = 'P5'
 
 
 class CNN(nn.Module):
-    def __init__(self, feature_vector_dimensions, output_size, kernel_size):
+    def __init__(self, feature_vector_dimensions, output_size, kernel_size, title_weight=0.5):
         super(CNN, self).__init__()
         self.cnn = nn.Conv1d(feature_vector_dimensions, output_size, kernel_size)
         self.tanh = nn.Tanh()
+        self.title_weight =title_weight
 
     def forward(self, feature_vectors):
         """
@@ -47,7 +48,7 @@ class CNN(nn.Module):
     def evaluate(self, title, body):
         title_vec = self.forward(Variable(title.permute(0, 2, 1)).cuda())
         body_vec = self.forward(Variable(body.permute(0, 2, 1)).cuda())
-        return (title_vec + body_vec) / 2
+        return (title_vec)*self.title_weight + body_vec*(1-self.title_weight)
 
 
 if __name__ == "__main__":
@@ -61,42 +62,39 @@ if __name__ == "__main__":
     loss.backward()
     """
     feature_vector_dimensions = 300
-    questions_vector_dimensions_list = [200, 300, 500]
+    questions_vector_dimensions = 500
     kernel_size = 3
 
-    learning_rate_list = [1e-4, 1e-5, 1e-6]
-    weight_decay_list = [1e-3, 1e-4] 
-    n_epochs = 5
+    learning_rate = 1e-4
+    weight_decay = 1e-3 
+    n_epochs = 4
     batch_size = 16
 
     best_auc = 0 
-    best_param = [0, 0, 0]
-    for questions_vector_dimensions in questions_vector_dimensions_list:
-        for learning_rate in learning_rate_list:
-            for weight_decay in weight_decay_list:
-                cnn = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size).cuda()
-            
+    best_param = [0, 0] 
 
-                ubuntu_database = database.UbuntuDatabase(use_glove=True)
-                android_database = database.AndroidDatabase(use_glove=True)
+    title_weight_list = [0.5, 0.25, 0.1] 
+    margin_size = 0.05 #[0.4, 0.2, 0.1, 0.05, 0.025, 0.0125, 0.005, 0.0025, 0]
+    for title_weight in title_weight_list:
+    #for margin_size in margin_list:
+        cnn = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size, title_weight=title_weight).cuda()
+        ubuntu_database = database.UbuntuDatabase(use_glove=True)
+        android_database = database.AndroidDatabase(use_glove=True)
 
-                training_dataset = ubuntu_database.get_training_dataset()
-                validation_dataset = android_database.get_validation_dataset()
-                test_dataset = android_database.get_testing_dataset()
+        training_dataset = ubuntu_database.get_training_dataset()
+        validation_dataset = android_database.get_validation_dataset()
+        test_dataset = android_database.get_testing_dataset()
 
-                optimizer = torch.optim.Adam(cnn.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        optimizer = torch.optim.Adam(cnn.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
-                for epoch in xrange(n_epochs):
-                    train_epoch(cnn, training_dataset, optimizer, batch_size)
-                score = test_auc(cnn, validation_dataset)
-                if score > best_auc:
-                    best_auc = score 
-                    best_param = [questions_vector_dimensions, learning_rate, weight_decay]
-                
-            
-        
-    print(best_auc)
-    print(best_param)
+        for epoch in xrange(n_epochs):
+            train_epoch(cnn, training_dataset, optimizer, batch_size, margin_size=margin_size)
+        score = test_auc(cnn, validation_dataset)
+        if score > best_auc:
+            best_auc = score 
+            best_param = [title_weight, margin_size]
+        print(best_auc)
+        print(best_param)
 
 
 
