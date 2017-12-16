@@ -44,7 +44,7 @@ class EncoderLoss(nn.Module):
         margin = Variable(margin, requires_grad=True).cuda()
         batch_losses = (margin + scores - scores[:, 0].unsqueeze(1).expand(scores.data.shape)).max(1)[0]
         loss = batch_losses.mean()
-        print loss
+        #print loss
         return loss
 
 
@@ -55,8 +55,8 @@ class DomainLoss(nn.Module):
     def forward(self, ubuntu_probabilities_batch, android_probabilities_batch):
         label_probabilities = torch.cat([ubuntu_probabilities_batch, android_probabilities_batch])
         label_targets = Variable(torch.cat([torch.zeros(len(ubuntu_probabilities_batch)),  torch.ones(len(android_probabilities_batch))]).long(), requires_grad=True).cuda()
-        loss = torch.nn.functional.nll_loss(label_probabilities, label_targets)
-        print loss
+        loss = torch.nn.functional.cross_entropy(label_probabilities, label_targets)
+        #print loss
         return loss
 
 class AdversarialLoss(nn.Module):
@@ -66,8 +66,8 @@ class AdversarialLoss(nn.Module):
         self.domain_loss = DomainLoss()
         self.lamb = lamb
 
-    def forward(self, question_batch, similar_question_batch, negative_questions_batch, label_probabilities, label_targets):
-        return self.encoder_loss(question_batch, similar_question_batch, negative_questions_batch) + self.domain_loss(label_probabilities, label_targets)
+    def forward(self, question_batch, similar_question_batch, negative_questions_batch, ubuntu_probabilities_batch, android_probabilities_batch):
+        return self.encoder_loss(question_batch, similar_question_batch, negative_questions_batch) - self.lamb *  self.domain_loss(ubuntu_probabilities_batch, android_probabilities_batch)
 
 class GRL(torch.autograd.Function):
     def __init__(self, lamb):

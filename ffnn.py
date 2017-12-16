@@ -11,7 +11,7 @@ class FFNN(nn.Module):
         self.hidden1_to_hidden2 = nn.Linear(hidden_size_1, hidden_size_2)
         self.hidden_to_output = nn.Linear(hidden_size_2, output_size)
         self.relu = nn.ReLU()
-        self.softmax = nn.LogSoftmax()
+        self.softmax = nn.Softmax()
 
     def forward(self, inp):
         """

@@ -57,14 +57,14 @@ def train_step(encoder, classifier, grl, batch, optimizer_encoder, optimizer_dom
     ubuntu_questions_batch = evaluate_multi_questions(encoder, ubuntu_rand_questions_title_batch, ubuntu_rand_questions_body_batch)
     android_questions_batch = evaluate_multi_questions(encoder, android_rand_questions_title_batch, android_rand_questions_body_batch)
 
-    ubuntu_questions_batch = grl(ubuntu_questions_batch)
-    android_questions_batch = grl(android_questions_batch)
+    #ubuntu_questions_batch = grl(ubuntu_questions_batch)
+    #android_questions_batch = grl(android_questions_batch)
 
     #evaluate classifier
     ubuntu_labels_probabilities = torch.cat([classifier(ubuntu_questions_batch[:,:,i]) for i in xrange(ubuntu_questions_batch.data.shape[2])])
-    android_labels_probabilities = torch.cat([classifier(ubuntu_questions_batch[:,:,i])for i in xrange(android_questions_batch.data.shape[2])])
+    android_labels_probabilities = torch.cat([classifier(android_questions_batch[:,:,i])for i in xrange(android_questions_batch.data.shape[2])])
 
-    print ubuntu_labels_probabilities
+    #print ubuntu_labels_probabilities
 
     optimizer_encoder.zero_grad()
     optimizer_domain.zero_grad()
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     encoder = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size).cuda()
     classifier = FFNN(questions_vector_dimensions, classifier_hidden_size_1, classifier_hidden_size_2, num_labels).cuda()
 
-    lamb_list = [1e-3] 
+    lamb_list = [1e-1] 
     best_lamb = 0 
     best_score = 0 
 
@@ -112,7 +112,7 @@ if __name__ == "__main__":
         grl = GRL(lamb)
 
         optimizer_encoder = torch.optim.Adam(encoder.parameters(), lr=learning_rate, weight_decay=weight_decay)
-        optimizer_domain = torch.optim.Adam(classifier.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        optimizer_domain = torch.optim.Adam(classifier.parameters(), lr=-learning_rate, weight_decay=weight_decay)
 
         for epoch in xrange(n_epochs):
             train_epoch(encoder, classifier, grl, training_dataset, optimizer_encoder, optimizer_domain, batch_size, lamb)
