@@ -44,7 +44,7 @@ class EncoderLoss(nn.Module):
         margin = Variable(margin, requires_grad=True).cuda()
         batch_losses = (margin + scores - scores[:, 0].unsqueeze(1).expand(scores.data.shape)).max(1)[0]
         loss = batch_losses.mean()
-        #print loss
+        print loss
         return loss
 
 
@@ -53,10 +53,15 @@ class DomainLoss(nn.Module):
         super(DomainLoss, self).__init__()
 
     def forward(self, ubuntu_probabilities_batch, android_probabilities_batch):
-        label_probabilities = torch.cat([ubuntu_probabilities_batch, android_probabilities_batch])
-        label_targets = Variable(torch.cat([torch.zeros(len(ubuntu_probabilities_batch)),  torch.ones(len(android_probabilities_batch))]).long(), requires_grad=True).cuda()
-        loss = torch.nn.functional.cross_entropy(label_probabilities, label_targets)
-        #print loss
+        label_probabilities = torch.cat([ubuntu_probabilities_batch, android_probabilities_batch], dim=2)
+        batch_losses = []
+        for i in xrange(len(label_probabilities)):
+            label_targets = Variable(torch.cat([torch.zeros(ubuntu_probabilities_batch.data.shape[2]),  torch.ones(ubuntu_probabilities_batch.data.shape[2])]).long(), requires_grad=True).cuda()
+            batch_losses.append(torch.nn.functional.cross_entropy(label_probabilities[i].permute(1,0), label_targets))
+
+        batch_losses_tensor = torch.cat(batch_losses)
+        loss = batch_losses_tensor.mean()
+        print loss
         return loss
 
 class AdversarialLoss(nn.Module):

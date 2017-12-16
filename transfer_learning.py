@@ -61,10 +61,10 @@ def train_step(encoder, classifier, grl, batch, optimizer_encoder, optimizer_dom
     #android_questions_batch = grl(android_questions_batch)
 
     #evaluate classifier
-    ubuntu_labels_probabilities = torch.cat([classifier(ubuntu_questions_batch[:,:,i]) for i in xrange(ubuntu_questions_batch.data.shape[2])])
-    android_labels_probabilities = torch.cat([classifier(android_questions_batch[:,:,i])for i in xrange(android_questions_batch.data.shape[2])])
+    ubuntu_labels_probabilities = torch.cat([classifier(ubuntu_questions_batch[:,:,i]).unsqueeze(2) for i in xrange(ubuntu_questions_batch.data.shape[2])], dim=2)
+    android_labels_probabilities = torch.cat([classifier(android_questions_batch[:,:,i]).unsqueeze(2) for i in xrange(android_questions_batch.data.shape[2])], dim=2)
 
-    #print ubuntu_labels_probabilities
+    print ubuntu_labels_probabilities
 
     optimizer_encoder.zero_grad()
     optimizer_domain.zero_grad()
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     encoder = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size).cuda()
     classifier = FFNN(questions_vector_dimensions, classifier_hidden_size_1, classifier_hidden_size_2, num_labels).cuda()
 
-    lamb_list = [1e-1] 
+    lamb_list = [1e-2] 
     best_lamb = 0 
     best_score = 0 
 
