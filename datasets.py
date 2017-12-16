@@ -9,6 +9,7 @@ class TransferLearningDataset(data.Dataset):
         self.ubuntu_queries = ubuntu_queries
 
     def __len__(self):
+        return 1000
         return len(self.ubuntu_dataset)
 
     def __getitem__(self, item):
@@ -25,7 +26,7 @@ class TransferLearningDataset(data.Dataset):
             random_ubuntu_title_vec, random_ubuntu_body_vec = self.ubuntu_queries[ubuntu_index].get_query_vector()
             random_android_title_vec, random_android_body_vec = self.android_queries[android_index].get_query_vector()
             list_random_ubuntu_title_vec.append(random_ubuntu_title_vec.unsqueeze(0) )
-            list_random_ubuntu_body_vec.append(random_android_body_vec.unsqueeze(0) )
+            list_random_ubuntu_body_vec.append(random_ubuntu_body_vec.unsqueeze(0) )
             list_random_android_title_vec.append(random_android_title_vec.unsqueeze(0) )
             list_random_android_body_vec.append(random_android_body_vec.unsqueeze(0) )
         result = self.ubuntu_dataset[item]
@@ -44,6 +45,7 @@ class AndroidTestingDataset(data.Dataset):
         self.query_pairs = query_pairs
 
     def __len__(self):
+        return 10000
         return len(self.query_pairs)
 
     def __getitem__(self, item):

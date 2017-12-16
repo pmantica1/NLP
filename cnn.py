@@ -46,8 +46,8 @@ class CNN(nn.Module):
         return output
 
     def evaluate(self, title, body):
-        title_vec = self.forward(Variable(title.permute(0, 2, 1)).cuda())
-        body_vec = self.forward(Variable(body.permute(0, 2, 1)).cuda())
+        title_vec = self.forward(Variable(title.permute(0, 2, 1), requires_grad=True).cuda())
+        body_vec = self.forward(Variable(body.permute(0, 2, 1), requires_grad=True).cuda())
         return (title_vec)*self.title_weight + body_vec*(1-self.title_weight)
 
 

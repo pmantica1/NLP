@@ -30,7 +30,7 @@ SIMILARITY = "similarity"
 
 
 class EncoderLoss(nn.Module):
-    def __init__(self, margin_size):
+    def __init__(self, margin_size=0.2):
         super(EncoderLoss, self).__init__()
         self.cosine_similarity = nn.CosineSimilarity(dim=1)
         self.margin_size = margin_size
@@ -41,9 +41,11 @@ class EncoderLoss(nn.Module):
         scores = self.cosine_similarity(expanded_question_batch, other_questions_batch)
         margin = self.margin_size * torch.ones(scores.data.shape)
         margin[:, 0] = 0
-        margin = Variable(margin).cuda()
+        margin = Variable(margin, requires_grad=True).cuda()
         batch_losses = (margin + scores - scores[:, 0].unsqueeze(1).expand(scores.data.shape)).max(1)[0]
-        return batch_losses.mean()
+        loss = batch_losses.mean()
+        print loss
+        return loss
 
 
 class DomainLoss(nn.Module):
@@ -52,9 +54,10 @@ class DomainLoss(nn.Module):
 
     def forward(self, ubuntu_probabilities_batch, android_probabilities_batch):
         label_probabilities = torch.cat([ubuntu_probabilities_batch, android_probabilities_batch])
-        label_targets = Variable(torch.cat([torch.zeros(len(ubuntu_probabilities_batch)),  torch.ones(len(android_probabilities_batch))]).long()).cuda()
-
-        return nn.functional.cross_entropy(label_probabilities, label_targets)
+        label_targets = Variable(torch.cat([torch.zeros(len(ubuntu_probabilities_batch)),  torch.ones(len(android_probabilities_batch))]).long(), requires_grad=True).cuda()
+        loss = torch.nn.functional.nll_loss(label_probabilities, label_targets)
+        print loss
+        return loss
 
 class AdversarialLoss(nn.Module):
     def __init__(self, lamb):
@@ -64,7 +67,18 @@ class AdversarialLoss(nn.Module):
         self.lamb = lamb
 
     def forward(self, question_batch, similar_question_batch, negative_questions_batch, label_probabilities, label_targets):
-        return self.encoder_loss(question_batch, similar_question_batch, negative_questions_batch) - self.lamb * self.domain_loss(label_probabilities, label_targets)
+        return self.encoder_loss(question_batch, similar_question_batch, negative_questions_batch) + self.domain_loss(label_probabilities, label_targets)
+
+class GRL(torch.autograd.Function):
+    def __init__(self, lamb):
+        super(GRL, self).__init__()
+        self.lamb = lamb
+
+    def forward(self, inp):
+        return inp.view_as(inp)
+
+    def backward(self, grad_output):
+        return -self.lamb * grad_output
 
 
 def train_epoch(nn_model, dataset, optimizer, batch_size, margin_size=0.2):
@@ -109,7 +123,7 @@ def test(nn_model, dataset):
         cosines_list.append(cosines)
         similarity_vector_list.append(similarity_vector)
 
-    print compute_metrics(cosines_list, similarity_vector_list)
+    return compute_metrics(cosines_list, similarity_vector_list)
 
 
 def test_step(nn_model, batch):
@@ -121,8 +135,8 @@ def test_step(nn_model, batch):
 
     similarity_vector_batch = batch[SIMILARITY_VEC].numpy()
 
-    question_vector_batch = nn_model.evaluate(questions_title_batch, questions_body_batch).data.numpy()
-    candidate_vector_batch = evaluate_multi_questions(nn_model, candidate_questions_title_batch, candidate_questions_body_batch).data.numpy()
+    question_vector_batch = nn_model.evaluate(questions_title_batch, questions_body_batch).data.cpu().numpy()
+    candidate_vector_batch = evaluate_multi_questions(nn_model, candidate_questions_title_batch, candidate_questions_body_batch).data.cpu().numpy()
 
     question_vec = question_vector_batch[0]
     similarity_vector = similarity_vector_batch[0]
@@ -152,11 +166,8 @@ def test_auc_step(nn_model, batch):
     question2_vec = nn_model.evaluate(title2, body2).data.cpu().numpy()[:, :, 0]
 
     assert question1_vec.shape == question2_vec.shape
-
     scores = 1 - cosine(question1_vec, question2_vec)
-
     similarities = batch[SIMILARITY].cpu().numpy().flatten()
-
     return torch.FloatTensor(scores), torch.LongTensor(similarities)
 
 
