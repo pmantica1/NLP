@@ -66,14 +66,15 @@ def train_step(encoder, classifier, grl, batch, optimizer_encoder, optimizer_dom
 
     print ubuntu_labels_probabilities
 
-    optimizer_encoder.zero_grad()
-    optimizer_domain.zero_grad()
-
     #get loss
-    loss = loss_fn(questions_batch, similar_questions_batch, negative_questions_batch, ubuntu_labels_probabilities, android_labels_probabilities)
+    loss_encoder, loss_domain = loss_fn(questions_batch, similar_questions_batch, negative_questions_batch, ubuntu_labels_probabilities, android_labels_probabilities)
 
-    loss.backward()
+    optimizer_encoder.zero_grad()
+    loss_encoder.backward(retain_graph=True)
     optimizer_encoder.step()
+
+    optimizer_domain.zero_grad()
+    loss_domain.backward()
     optimizer_domain.step()
 
 
@@ -95,7 +96,7 @@ if __name__ == "__main__":
     encoder = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size).cuda()
     classifier = FFNN(questions_vector_dimensions, classifier_hidden_size_1, classifier_hidden_size_2, num_labels).cuda()
 
-    lamb_list = [1e-2] 
+    lamb_list = [1e-3] 
     best_lamb = 0 
     best_score = 0 
 
@@ -112,7 +113,7 @@ if __name__ == "__main__":
         grl = GRL(lamb)
 
         optimizer_encoder = torch.optim.Adam(encoder.parameters(), lr=learning_rate, weight_decay=weight_decay)
-        optimizer_domain = torch.optim.Adam(classifier.parameters(), lr=-learning_rate, weight_decay=weight_decay)
+        optimizer_domain = torch.optim.Adam(classifier.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
         for epoch in xrange(n_epochs):
             train_epoch(encoder, classifier, grl, training_dataset, optimizer_encoder, optimizer_domain, batch_size, lamb)
