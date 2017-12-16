@@ -44,7 +44,6 @@ class EncoderLoss(nn.Module):
         margin = Variable(margin).cuda()
         batch_losses = (margin + scores - scores[:, 0].unsqueeze(1).expand(scores.data.shape)).max(1)[0]
         loss = batch_losses.mean()
-        print loss
         return loss
 
 
@@ -61,7 +60,6 @@ class DomainLoss(nn.Module):
 
         batch_losses_tensor = torch.cat(batch_losses)
         loss = batch_losses_tensor.mean()
-        print loss
         return loss
 
 class AdversarialLoss(nn.Module):

@@ -2,6 +2,7 @@ import torch.utils.data as data
 import torch
 
 class TransferLearningDataset(data.Dataset):
+    NUM_QUESTIONS = 6
     # Precondition is that the android queries and ubuntu queries are randomly ordered 
     def __init__(self, ubuntu_dataset, android_queries, ubuntu_queries):
         self.ubuntu_dataset = ubuntu_dataset
@@ -15,12 +16,13 @@ class TransferLearningDataset(data.Dataset):
     def __getitem__(self, item):
         if item > len(self):
             raise AttributeError("index out of bounds")
-        base_index = item*20
+
+        base_index = item * TransferLearningDataset.NUM_QUESTIONS
         list_random_ubuntu_title_vec = []
         list_random_ubuntu_body_vec = []
         list_random_android_title_vec = []
         list_random_android_body_vec = []
-        for i in range(20):
+        for i in range(TransferLearningDataset.NUM_QUESTIONS):
             ubuntu_index = (base_index+i)%len(self.ubuntu_queries)
             android_index = (base_index+i)%len(self.android_queries)
             random_ubuntu_title_vec, random_ubuntu_body_vec = self.ubuntu_queries[ubuntu_index].get_query_vector()

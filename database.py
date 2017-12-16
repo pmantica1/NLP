@@ -190,7 +190,7 @@ class QueryPair(object):
 
 
 class QuerySet(object):
-    NUM_RAND_QUESTIONS_THRESHOLD = 20 
+    NUM_RAND_QUESTIONS_THRESHOLD = 6 
     def __init__(self, id, similar_id_to_query, random_id_to_query, id_to_query):
         # Id of main query
         self.id = id
