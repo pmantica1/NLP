@@ -5,7 +5,7 @@ import torch
 
 
 def load_cnn_encoder(filepath, feature_vector_dimensions, questions_vector_dimensions, kernel_size):
-	encoder = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size).cuda()
+	encoder = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size)
 	encoder.load_state_dict(torch.load(filepath))
 	return encoder
 
@@ -19,7 +19,7 @@ if __name__ == "__main__":
 	questions_vector_dimensions = 500
 	kernel_size = 3
 
-	encoder = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size).cuda()
+	encoder = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size)
 	encoder.load_state_dict(torch.load(filepath))
 
 	print test_auc(encoder, test_set)

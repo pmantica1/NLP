@@ -33,14 +33,14 @@ class LSTM(nn.Module):
         return output, new_hidden, new_state
 
     def init_hidden(self, batch_size):
-        return Variable(torch.zeros(1, batch_size, self.hidden_size)).cuda()
+        return Variable(torch.zeros(1, batch_size, self.hidden_size))
 
     def init_state(self, batch_size):
-        return Variable(torch.zeros(1, batch_size, self.hidden_size)).cuda()
+        return Variable(torch.zeros(1, batch_size, self.hidden_size))
 
     def evaluate(self, title, body):
-        title_inp = Variable(title.permute(1, 0, 2)).cuda()
-        body_inp = Variable(body.permute(1, 0, 2)).cuda()
+        title_inp = Variable(title.permute(1, 0, 2))
+        body_inp = Variable(body.permute(1, 0, 2))
 
         batch_size = title_inp.data.shape[1]
 
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     n_epochs = 20
     batch_size = 16
 
-    lstm = LSTM(feature_vector_dimensions, questions_vector_dimensions, batch_size).cuda()
+    lstm = LSTM(feature_vector_dimensions, questions_vector_dimensions, batch_size)
 
     database = UbuntuDatabase()
     training_dataset = database.get_training_dataset()

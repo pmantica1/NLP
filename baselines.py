@@ -7,7 +7,7 @@ import torch
 from torch.utils import data
 
 def compute_baselines_part1():
-    query_database = QueryDatabase()
+    query_database = UbuntuDatabase()
     validation_set = query_database.get_validation_dataset()
     testing_set = query_database.get_testing_dataset()
 
@@ -45,4 +45,4 @@ def compute_baselines_part2():
 
 if __name__ == "__main__":
     pp = pprint.PrettyPrinter(indent=4)
-    pp.pprint(compute_baselines_part2())
+    pp.pprint(compute_baselines_part1())

@@ -47,8 +47,8 @@ class CNN(nn.Module):
         return output
 
     def evaluate(self, title, body):
-        title_vec = self.forward(Variable(title.permute(0, 2, 1)).cuda())
-        body_vec = self.forward(Variable(body.permute(0, 2, 1)).cuda())
+        title_vec = self.forward(Variable(title.permute(0, 2, 1)))
+        body_vec = self.forward(Variable(body.permute(0, 2, 1)))
         return (title_vec)*self.title_weight + body_vec*(1-self.title_weight)
 
 
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     margin_size = 0.5 #[0.4, 0.2, 0.1, 0.05, 0.025, 0.0125, 0.005, 0.0025, 0]
     for title_weight in title_weight_list:
     #for margin_size in margin_list:
-        cnn = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size, title_weight=title_weight).cuda()
+        cnn = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size, title_weight=title_weight)
         ubuntu_database = database.UbuntuDatabase(use_glove=True)
         android_database = database.AndroidDatabase(use_glove=True)
 
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     n_epochs = 10
     batch_size = 16
 
-    cnn = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size).cuda()
+    cnn = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size).fcuda()
 
     database = UbuntuDatabase(use_glove=False)
     training_dataset = database.get_training_dataset()
