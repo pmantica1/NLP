@@ -9,7 +9,7 @@ import json
 def compute_scores_and_similarities(dataset):
     score_list = [] 
     similarity_list = [] 
-    for i in tqmd(range(len(dataset))):
+    for i in tqdm(range(len(dataset))):
         query_pair = dataset[i]
         question1_vec = (query_pair["id_1_title_vec"] + query_pair["id_1_body_vec"]) / 2.0
         question2_vec = (query_pair["id_2_title_vec"] + query_pair["id_2_body_vec"]) / 2.0
