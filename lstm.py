@@ -3,7 +3,7 @@ from torch import nn
 from torch.autograd import Variable
 
 from nn_utils import train_epoch, test
-
+from database import UbuntuDatabase
 from tqdm import tqdm
 import time
 
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     n_epochs = 20
     batch_size = 16
 
-    lstm = LSTM(feature_vector_dimensions, questions_vector_dimensions, batch_size)
+    lstm = LSTM(feature_vector_dimensions, questions_vector_dimensions, batch_size).cuda()
 
     database = UbuntuDatabase()
     training_dataset = database.get_training_dataset()
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(lstm.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
     for epoch in xrange(n_epochs):
-        train_epoch(lstm, training_dataset, optimizer, batch_size)
-        test(lstm, validation_dataset)
+        train_epoch(lstm, training_dataset, optimizer, batch_size, margin_size=0.5)
+        print test(lstm, validation_dataset)
 
-    test(lstm, test_dataset)
+    print test(lstm, test_dataset)

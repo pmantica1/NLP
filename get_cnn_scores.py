@@ -1,24 +1,25 @@
 import pickle 
 from nn_utils import test_auc_step 
 from database import AndroidDatabase 
-from torch import data 
+from torch.utils import data 
 from load_model import load_cnn_encoder
+from tqdm import tqdm
 
 def compute_scores_and_similarities(model, dataset):
     data_loader = data.DataLoader(dataset, batch_size=1, shuffle=False)
     score_list = [] 
     similarity_list = [] 
     for batch in tqdm(data_loader):
-        score, similarity = test_auc_step(nn_model, batch)
+        score, similarity = test_auc_step(model, batch)
         score_list.append(score)
         similarity_list.append(similarity)
     return score_list, similarity_list
 
 if __name__ == "__main__":
-	android_database = database.AndroidDatabase(use_glove=True)
+    android_database = AndroidDatabase(use_glove=True)
     validation_set = android_database.get_validation_dataset()
     testing_set = android_database.get_testing_dataset()
-    
+
     filepath = "cnn_encoder.pt"
     feature_vector_dimensions = 300
     questions_vector_dimensions = 500

@@ -57,9 +57,6 @@ def train_step(encoder, classifier, grl, batch, optimizer_encoder, optimizer_dom
     ubuntu_questions_batch = evaluate_multi_questions(encoder, ubuntu_rand_questions_title_batch, ubuntu_rand_questions_body_batch)
     android_questions_batch = evaluate_multi_questions(encoder, android_rand_questions_title_batch, android_rand_questions_body_batch)
 
-    #ubuntu_questions_batch = grl(ubuntu_questions_batch)
-    #android_questions_batch = grl(android_questions_batch)
-
     #evaluate classifier
     ubuntu_labels_probabilities = torch.cat([classifier(ubuntu_questions_batch[:,:,i]).unsqueeze(2) for i in xrange(ubuntu_questions_batch.data.shape[2])], dim=2)
     android_labels_probabilities = torch.cat([classifier(android_questions_batch[:,:,i]).unsqueeze(2) for i in xrange(android_questions_batch.data.shape[2])], dim=2)
@@ -93,7 +90,7 @@ if __name__ == "__main__":
 
     learning_rate = 1e-4
     weight_decay = 1e-3
-    n_epochs = 20
+    n_epochs = 4
     batch_size = 16
 
     encoder = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size).cuda()
@@ -131,3 +128,6 @@ if __name__ == "__main__":
         print(best_lamb)
 
     print test_auc(encoder, android_test_dataset)
+
+    filepath = 'cnn_encoder.pt'
+    torch.save(encoder.cpu().state_dict(), filepath)

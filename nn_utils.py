@@ -73,17 +73,6 @@ class AdversarialLoss(nn.Module):
         return self.encoder_loss(question_batch, similar_question_batch, negative_questions_batch) - self.lamb * self.domain_loss(ubuntu_probabilities_batch, android_probabilities_batch), \
                self.domain_loss(ubuntu_probabilities_batch, android_probabilities_batch)
 
-class GRL(torch.autograd.Function):
-    def __init__(self, lamb):
-        super(GRL, self).__init__()
-        self.lamb = lamb
-
-    def forward(self, inp):
-        return inp.view_as(inp)
-
-    def backward(self, grad_output):
-        return -self.lamb * grad_output
-
 
 def train_epoch(nn_model, dataset, optimizer, batch_size, margin_size=0.2):
     data_loader = data.DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
@@ -126,7 +115,6 @@ def test(nn_model, dataset):
         cosines, similarity_vector = test_step(nn_model, batch)
         cosines_list.append(cosines)
         similarity_vector_list.append(similarity_vector)
-
     return compute_metrics(cosines_list, similarity_vector_list)
 
 
@@ -142,10 +130,11 @@ def test_step(nn_model, batch):
     question_vector_batch = nn_model.evaluate(questions_title_batch, questions_body_batch).data.cpu().numpy()
     candidate_vector_batch = evaluate_multi_questions(nn_model, candidate_questions_title_batch, candidate_questions_body_batch).data.cpu().numpy()
 
-    question_vec = question_vector_batch[0]
-    similarity_vector = similarity_vector_batch[0]
     candidate_questions_vec  = candidate_vector_batch[0]
-    cosines = [1-cosine(question_vec.flatten(), candidate_questions_vec[:, i].flatten()) for i in range(len(candidate_questions_vec[0]))]
+    similarity_vector = similarity_vector_batch[0]
+    question_vec = question_vector_batch[0].repeat(len(candidate_questions_vec[0]), axis=1).swapaxes(1,0)
+
+    cosines = 1 - cosine(question_vec, candidate_questions_vec.swapaxes(1, 0))
     return cosines, similarity_vector
 
 

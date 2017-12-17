@@ -6,6 +6,7 @@ import torch.utils.data as data
 from tqdm import tqdm
 from scipy.spatial.distance import cosine
 from metrics import compute_metrics
+from database import UbuntuDatabase
 
 from nn_utils import train_epoch, test, test_auc
 
@@ -61,20 +62,21 @@ if __name__ == "__main__":
     print loss
     loss.backward()
     """
+
     feature_vector_dimensions = 300
     questions_vector_dimensions = 500
     kernel_size = 3
 
-    learning_rate = 1e-4
-    weight_decay = 1e-3 
+    learning_rate = 1e-3
+    weight_decay = 1e-5 
     n_epochs = 4
     batch_size = 16
 
     best_auc = 0 
     best_param = [0, 0] 
 
-    title_weight_list = [0.5, 0.25, 0.1] 
-    margin_size = 0.05 #[0.4, 0.2, 0.1, 0.05, 0.025, 0.0125, 0.005, 0.0025, 0]
+    title_weight_list = [0.5] 
+    margin_size = 0.5 #[0.4, 0.2, 0.1, 0.05, 0.025, 0.0125, 0.005, 0.0025, 0]
     for title_weight in title_weight_list:
     #for margin_size in margin_list:
         cnn = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size, title_weight=title_weight).cuda()
@@ -89,12 +91,47 @@ if __name__ == "__main__":
 
         for epoch in xrange(n_epochs):
             train_epoch(cnn, training_dataset, optimizer, batch_size, margin_size=margin_size)
-        score = test_auc(cnn, validation_dataset)
+            print test_auc(cnn, validation_dataset)
+
+        print test_auc(cnn, test_dataset)
+
+        """
         if score > best_auc:
             best_auc = score 
             best_param = [title_weight, margin_size]
         print(best_auc)
         print(best_param)
+        """
+    
+
+    """
+    feature_vector_dimensions = 200
+    questions_vector_dimensions = 667
+    kernel_size = 3
+
+    learning_rate = 1e-3
+    weight_decay = 1e-5
+    n_epochs = 10
+    batch_size = 16
+
+    cnn = CNN(feature_vector_dimensions, questions_vector_dimensions, kernel_size).cuda()
+
+    database = UbuntuDatabase(use_glove=False)
+    training_dataset = database.get_training_dataset()
+    validation_dataset = database.get_validation_dataset()
+    test_dataset = database.get_testing_dataset()
+
+    optimizer = torch.optim.Adam(cnn.parameters(), lr=learning_rate, weight_decay=weight_decay)
+
+    for epoch in xrange(n_epochs):
+        train_epoch(cnn, training_dataset, optimizer, batch_size, margin_size=0.5)
+        print test(cnn, validation_dataset)
+
+    print test(cnn, test_dataset)
+    """
+
+
+
 
 
 

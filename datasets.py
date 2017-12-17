@@ -10,7 +10,6 @@ class TransferLearningDataset(data.Dataset):
         self.ubuntu_queries = ubuntu_queries
 
     def __len__(self):
-        return 1000
         return len(self.ubuntu_dataset)
 
     def __getitem__(self, item):
@@ -47,7 +46,6 @@ class AndroidTestingDataset(data.Dataset):
         self.query_pairs = query_pairs
 
     def __len__(self):
-        return 10000
         return len(self.query_pairs)
 
     def __getitem__(self, item):
