@@ -35,12 +35,10 @@ class AndroidDatabase():
 
     def get_validation_dataset(self):
         validation_dataset = self.validation_neg+self.validation_pos
-        shuffle(validation_dataset)
         return datasets.AndroidTestingDataset(validation_dataset)
 
     def get_testing_dataset(self):
         testing_dataset = self.test_neg+self.test_pos
-        shuffle(testing_dataset)
         return datasets.AndroidTestingDataset(testing_dataset)
 
     def load_data_pairs(self, filename):
