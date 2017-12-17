@@ -47,25 +47,9 @@ cnn_testing_scores = process_tensor_list(cnn_testing_scores)
 cnn_testing_similarities = process_tensor_list(cnn_testing_similarities)
 
 
-# In[ ]:
 
 
-print(cnn_validation_scores[0])
 
-
-# In[ ]:
-
-
-print(tfidf_validation_scores[0])
-
-
-# In[ ]:
-
-
-len(tfidf_validation_scores)
-
-
-# In[7]:
 
 
 def compute_auc(scores_list, similarity_list):
@@ -103,41 +87,6 @@ def opt_max(scalar_list1, scalar_list2, weight=0.5):
     return list(np.maximum(np.array(scalar_list1), np.array(scalar_list2)))
 
 
-# In[24]:
-
-
-compute_auc(tfidf_validation_scores, cnn_validation_similarities)
-
-
-# In[ ]:
-
-
-compute_auc(normalize_scores(tfidf_testing_scores), tfidf_similarity_scores)
-
-
-# In[ ]:
-
-
-compute_auc(process_tensor_list(cnn_validation_scores), process_tensor_list(cnn_validation_similarities))
-
-
-# In[ ]:
-
-
-for i in range(11):
-    weight = float(i)/10
-    compute_auc(avg(normalize_scores(tfidf_validation_scores), normalize_scores(cnn_validation_scores), weight=weight), cnn_validation_similarities)
-
-
-# In[29]:
-
 
 weight = 0.3
 compute_auc(avg(normalize_scores(tfidf_validation_scores), normalize_scores(cnn_validation_scores), weight=weight), cnn_validation_similarities)
-
-
-# In[ ]:
-
-
-print(type(cnn_validation_scores[0]))
-
