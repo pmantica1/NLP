@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[41]:
+# In[22]:
 
 
 import pickle 
@@ -9,19 +9,27 @@ from metrics import AUCMeter
 import torch
 from tqdm import tqdm
 import numpy as np
+import json
 
 
-# In[88]:
+# In[23]:
 
 
 indir = "similarity_scores/"
-tfidf_validation_scores = pickle.load(open(indir+"validation_vectorizer_scores.pkl", "rb"))
-tfidf_validation_similarities = pickle.load(open(indir+"validation_vectorizer_similarities.pkl", "rb"))
-tfidf_testing_scores = pickle.load(open(indir+"testing_vectorizer_scores.pkl", "rb"))
-tfidf_testing_similarities = pickle.load(open(indir+"testing_vectorizer_similarities.pkl", "rb"))
+tfidf_validation_scores = json.load(open(indir+"validation_vectorizer_scores.json", "r"))
+tfidf_validation_similarities = json.load(open(indir+"validation_vectorizer_similarities.json", "r"))
+tfidf_testing_scores = json.load(open(indir+"testing_vectorizer_scores.json", "r"))
+tfidf_testing_similarities = json.load(open(indir+"testing_vectorizer_similarities.json", "rb"))
 
 
-# In[53]:
+# In[30]:
+
+
+def process_tensor_list(tensor_list):
+    return [ np.asscalar(tensor.numpy()[0]) for tensor in tensor_list]
+
+
+# In[3]:
 
 
 cnn_validation_scores = pickle.load(open(indir+"validation_cnn_scores.pkl", "rb"))
@@ -30,11 +38,7 @@ cnn_testing_scores = pickle.load(open(indir+"testing_cnn_scores.pkl", "rb"))
 cnn_testing_similarities = pickle.load(open(indir+"testing_cnn_similarities.pkl", "rb"))
 
 
-# In[77]:
-
-def process_tensor_list(tensor_list):
-    return [ np.asscalar(tensor.numpy()[0]) for tensor in tensor_list]
-
+# In[6]:
 
 
 cnn_validation_scores = process_tensor_list(cnn_validation_scores)
@@ -43,19 +47,25 @@ cnn_testing_scores = process_tensor_list(cnn_testing_scores)
 cnn_testing_similarities = process_tensor_list(cnn_testing_similarities)
 
 
-# In[62]:
+# In[ ]:
 
 
+print(cnn_validation_scores[0])
 
 
+# In[ ]:
 
-# In[14]:
+
+print(tfidf_validation_scores[0])
+
+
+# In[ ]:
 
 
 len(tfidf_validation_scores)
 
 
-# In[44]:
+# In[7]:
 
 
 def compute_auc(scores_list, similarity_list):
@@ -65,9 +75,13 @@ def compute_auc(scores_list, similarity_list):
     print(meter.value(0.05))
 
 
+# In[5]:
 
 
-# In[47]:
+
+
+
+# In[8]:
 
 
 def normalize_scores(scalar_list):
@@ -75,42 +89,55 @@ def normalize_scores(scalar_list):
     return list((np.array(scalar_list)-np.mean(np_scalar_list))/np.std(np_scalar_list))
 
 
-# In[51]:
+# In[9]:
 
 
 def avg(scalar_list1, scalar_list2, weight=0.5):
     return list(np.array(scalar_list1)*weight+np.array(scalar_list2)*(1-weight))
 
 
-# In[71]:
+# In[27]:
+
+
+def opt_max(scalar_list1, scalar_list2, weight=0.5):
+    return list(np.maximum(np.array(scalar_list1), np.array(scalar_list2)))
+
+
+# In[24]:
 
 
 compute_auc(tfidf_validation_scores, cnn_validation_similarities)
 
 
-# In[48]:
+# In[ ]:
 
 
 compute_auc(normalize_scores(tfidf_testing_scores), tfidf_similarity_scores)
 
 
-# In[45]:
+# In[ ]:
 
 
 compute_auc(process_tensor_list(cnn_validation_scores), process_tensor_list(cnn_validation_similarities))
 
 
-# In[82]:
+# In[ ]:
 
 
 for i in range(11):
     weight = float(i)/10
-    compute_auc(avg(normalize_scores(t), normalize_scores(cnn_validation_scores), weight=weight), cnn_validation_similarities)
+    compute_auc(avg(normalize_scores(tfidf_validation_scores), normalize_scores(cnn_validation_scores), weight=weight), cnn_validation_similarities)
 
 
-# In[89]:
+# In[29]:
 
 
 weight = 0.3
 compute_auc(avg(normalize_scores(tfidf_validation_scores), normalize_scores(cnn_validation_scores), weight=weight), cnn_validation_similarities)
+
+
+# In[ ]:
+
+
+print(type(cnn_validation_scores[0]))
 
